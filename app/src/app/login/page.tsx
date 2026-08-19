@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -45,9 +46,14 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-red-600 text-2xl font-bold text-white">
-            🚑
-          </div>
+          <Image
+            src="/icons/icon-192.png"
+            alt="G01042 Przywidz"
+            width={64}
+            height={64}
+            priority
+            className="mx-auto mb-4 rounded-2xl"
+          />
           <CardTitle className="text-2xl">G01042 Przywidz</CardTitle>
           <CardDescription>Zaloguj się do systemu zespołu</CardDescription>
         </CardHeader>

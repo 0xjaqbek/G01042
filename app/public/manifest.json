@@ -1,12 +1,17 @@
 {
   "name": "Karetka G01042 Przywidz",
   "short_name": "G01042",
+  "id": "/",
   "description": "Aplikacja zespołu karetki G01042 Przywidz",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "background_color": "#09090b",
   "theme_color": "#dc2626",
   "orientation": "portrait-primary",
+  "lang": "pl",
+  "categories": ["medical", "productivity"],
   "icons": [
     {
       "src": "/icons/icon-192.png",

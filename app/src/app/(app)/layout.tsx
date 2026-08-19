@@ -15,10 +15,7 @@ export default async function AppLayout({
     <Providers>
       <div className="flex min-h-screen flex-col pb-16">
         <main className="flex-1">{children}</main>
-        <BottomNav
-          role={session.user.role}
-          isLeader={session.user.isLeader}
-        />
+        <BottomNav isLeader={session.user.isLeader} />
       </div>
     </Providers>
   );

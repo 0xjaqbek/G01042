@@ -29,10 +29,8 @@ const navItems: NavItem[] = [
 ];
 
 export function BottomNav({
-  role,
   isLeader,
 }: {
-  role: string;
   isLeader: boolean;
 }) {
   const pathname = usePathname();
@@ -43,7 +41,7 @@ export function BottomNav({
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div className="mx-auto flex max-w-lg items-center justify-around">
+      <div className="mx-auto grid w-full max-w-lg grid-cols-6 items-stretch">
         {visibleItems.map((item) => {
           const isActive =
             pathname === item.href ||
@@ -54,14 +52,16 @@ export function BottomNav({
               key={item.href}
               href={item.href}
               className={cn(
-                "flex flex-col items-center gap-0.5 px-2 py-2 text-xs transition-colors",
+                "flex min-w-0 flex-col items-center justify-center gap-0.5 px-0.5 py-1.5 text-[10px] leading-none transition-colors min-[390px]:py-2 min-[390px]:text-xs",
                 isActive
                   ? "text-red-500"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <Icon className="h-5 w-5" />
-              <span>{item.label}</span>
+              <Icon className="h-4 w-4 min-[390px]:h-5 min-[390px]:w-5" />
+              <span className="block w-full overflow-hidden text-ellipsis whitespace-nowrap text-center">
+                {item.label}
+              </span>
             </Link>
           );
         })}

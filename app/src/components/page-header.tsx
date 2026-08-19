@@ -1,9 +1,10 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
+import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LogOut } from "lucide-react";
+import { ArrowLeft, LogOut } from "lucide-react";
 
 export function PageHeader({
   title,
@@ -13,17 +14,41 @@ export function PageHeader({
   description?: string;
 }) {
   const { data: session } = useSession();
+  const pathname = usePathname();
+  const router = useRouter();
+  const showBackButton = pathname !== "/";
+
+  function goBack() {
+    if (window.history.length > 1) {
+      router.back();
+      return;
+    }
+
+    router.push(pathname.startsWith("/admin/") ? "/admin" : "/");
+  }
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div className="flex items-center justify-between px-4 py-3">
-        <div>
+      <div className="flex items-center gap-2 px-3 py-3">
+        {showBackButton && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            onClick={goBack}
+            aria-label="Wstecz"
+            title="Wstecz"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+        )}
+        <div className="min-w-0 flex-1">
           <h1 className="text-lg font-semibold">{title}</h1>
           {description && (
-            <p className="text-xs text-muted-foreground">{description}</p>
+            <p className="truncate text-xs text-muted-foreground">{description}</p>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1">
           {session?.user && (
             <>
               <Badge variant="secondary" className="text-xs">
@@ -34,6 +59,8 @@ export function PageHeader({
                 size="icon"
                 className="h-8 w-8"
                 onClick={() => signOut({ callbackUrl: "/login" })}
+                aria-label="Wyloguj"
+                title="Wyloguj"
               >
                 <LogOut className="h-4 w-4" />
               </Button>

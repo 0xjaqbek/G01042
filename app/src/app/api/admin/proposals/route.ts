@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { proposalEntries, shiftProposals, users } from "@/db/schema";
@@ -18,7 +18,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Invalid month" }, { status: 400 });
   }
 
-  const proposals = await db
+  const [proposals, team] = await Promise.all([
+    db
     .select({
       id: shiftProposals.id,
       userId: shiftProposals.userId,
@@ -29,7 +30,13 @@ export async function GET(request: NextRequest) {
     })
     .from(shiftProposals)
     .innerJoin(users, eq(shiftProposals.userId, users.id))
-    .where(and(eq(shiftProposals.year, year), eq(shiftProposals.month, month)));
+      .where(and(eq(shiftProposals.year, year), eq(shiftProposals.month, month))),
+    db
+      .select({ id: users.id, name: users.name, role: users.role })
+      .from(users)
+      .where(eq(users.isActive, true))
+      .orderBy(asc(users.name)),
+  ]);
 
   const entries = proposals.length
     ? await db
@@ -44,6 +51,7 @@ export async function GET(request: NextRequest) {
     : [];
 
   return NextResponse.json({
+    team,
     proposals: proposals.map((proposal) => {
       const proposalDays = entries
         .filter((entry) => entry.proposalId === proposal.id)

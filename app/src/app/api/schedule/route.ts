@@ -3,6 +3,15 @@ import { db } from "@/db";
 import { scheduleEntries, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
+import {
+  getCoverageIssueDates,
+  getHoursLimit,
+  getMemberHours,
+  getRestConflicts,
+  type ScheduleDraftEntry,
+  type ShiftFunction,
+  type ShiftType,
+} from "@/lib/schedule-rules";
 
 export async function GET(request: NextRequest) {
   const session = await auth();
@@ -40,7 +49,72 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { entries: newEntries, year, month } = body;
+  const year = Number(body.year);
+  const month = Number(body.month);
+  const newEntries = body.entries;
+
+  if (!Number.isInteger(year) || year < 2000 || !Number.isInteger(month) || month < 1 || month > 12 || !Array.isArray(newEntries)) {
+    return NextResponse.json({ error: "Nieprawidłowe dane grafiku" }, { status: 400 });
+  }
+
+  const daysInMonth = new Date(year, month, 0).getDate();
+  const datePrefix = `${year}-${String(month).padStart(2, "0")}-`;
+  const normalizedEntries: ScheduleDraftEntry[] = [];
+  const uniqueAssignments = new Set<string>();
+
+  for (const entry of newEntries) {
+    const userId = Number(entry?.userId);
+    const date = String(entry?.date ?? "");
+    const shiftType = entry?.shiftType as ShiftType;
+    const shiftFunction = entry?.shiftFunction as ShiftFunction;
+    const day = Number(date.slice(8, 10));
+    const assignmentKey = `${userId}:${date}`;
+
+    if (
+      !Number.isInteger(userId) ||
+      !date.startsWith(datePrefix) ||
+      !Number.isInteger(day) ||
+      day < 1 ||
+      day > daysInMonth ||
+      !["D", "N", "DN"].includes(shiftType) ||
+      !["K", "R"].includes(shiftFunction) ||
+      uniqueAssignments.has(assignmentKey)
+    ) {
+      return NextResponse.json({ error: "Grafik zawiera nieprawidłowy lub powielony dyżur" }, { status: 400 });
+    }
+
+    uniqueAssignments.add(assignmentKey);
+    normalizedEntries.push({ userId, date, shiftType, shiftFunction });
+  }
+
+  const team = await db
+    .select({ id: users.id, name: users.name })
+    .from(users)
+    .where(eq(users.isActive, true));
+  const teamIds = new Set(team.map((member) => member.id));
+
+  if (normalizedEntries.some((entry) => !teamIds.has(entry.userId))) {
+    return NextResponse.json({ error: "Grafik zawiera nieaktywnego pracownika" }, { status: 400 });
+  }
+
+  const coverageIssues = getCoverageIssueDates(normalizedEntries, year, month);
+  const restConflicts = getRestConflicts(normalizedEntries);
+  const overLimit = team.filter((member) => {
+    const { max } = getHoursLimit(member.name);
+    return getMemberHours(normalizedEntries, member.id) > max;
+  });
+
+  if (coverageIssues.length || restConflicts.length || overLimit.length) {
+    return NextResponse.json(
+      {
+        error: "Grafik wymaga poprawy przed publikacją",
+        coverageIssues,
+        restConflicts,
+        overLimit: overLimit.map((member) => member.id),
+      },
+      { status: 400 }
+    );
+  }
 
   // Delete existing entries for this month
   await db
@@ -50,9 +124,9 @@ export async function POST(request: NextRequest) {
     );
 
   // Insert new entries
-  if (newEntries && newEntries.length > 0) {
+  if (normalizedEntries.length > 0) {
     await db.insert(scheduleEntries).values(
-      newEntries.map((e: any) => ({
+      normalizedEntries.map((e) => ({
         userId: e.userId,
         date: e.date,
         shiftType: e.shiftType,

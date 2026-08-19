@@ -40,11 +40,21 @@ async function getInitialScheduleMonth() {
   return latestSchedule ?? { year: currentYear, month: currentMonth };
 }
 
-export default async function GrafikPage() {
+export default async function GrafikPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ year?: string; month?: string }>;
+}) {
   const session = await auth();
   if (!session) redirect("/login");
 
-  const initialScheduleMonth = await getInitialScheduleMonth();
+  const params = await searchParams;
+  const requestedYear = Number(params.year);
+  const requestedMonth = Number(params.month);
+  const initialScheduleMonth =
+    requestedYear > 2000 && requestedMonth >= 1 && requestedMonth <= 12
+      ? { year: requestedYear, month: requestedMonth }
+      : await getInitialScheduleMonth();
 
   return (
     <GrafikClient

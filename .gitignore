@@ -1,0 +1,22 @@
+# dependencies
+node_modules/
+
+# env files
+.env
+.env.local
+.env.production
+
+# next.js
+.next/
+
+# misc
+.DS_Store
+*.pem
+
+# neon
+.neon
+
+# claude/agents local
+.agents/
+.claude/
+skills-lock.json

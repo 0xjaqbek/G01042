@@ -1,10 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/page-header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, CalendarDays, ClipboardCheck, Package, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
@@ -33,9 +30,9 @@ export function AdminClient() {
               <CardHeader className="flex flex-row items-center gap-4 p-4">
                 <CalendarDays className="h-8 w-8 text-green-400" />
                 <div>
-                  <CardTitle className="text-base">Tworzenie grafiku</CardTitle>
+                  <CardTitle className="text-base">Propozycje grafiku</CardTitle>
                   <p className="text-xs text-muted-foreground">
-                    Przeglądaj propozycje, twórz grafik
+                    Przeglądaj i zatwierdzaj dyspozycyjność
                   </p>
                 </div>
               </CardHeader>

@@ -40,13 +40,16 @@ function getDaysInMonth(year: number, month: number) {
 export function GrafikClient({
   userId,
   isLeader,
+  initialYear,
+  initialMonth,
 }: {
   userId: string;
   isLeader: boolean;
+  initialYear: number;
+  initialMonth: number;
 }) {
-  const now = new Date();
-  const [year, setYear] = useState(now.getFullYear());
-  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [year, setYear] = useState(initialYear);
+  const [month, setMonth] = useState(initialMonth);
   const [entries, setEntries] = useState<ScheduleEntry[]>([]);
   const [loading, setLoading] = useState(true);
 

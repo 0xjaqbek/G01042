@@ -15,8 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Package, FileText } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { FileText, Loader2, Package, Plus } from "lucide-react";
 
 interface Material {
   id: number;
@@ -105,23 +104,23 @@ export function ZuzycieClient({
         title="Zużycie materiałów"
         description={today}
       />
-      <div className="p-4 space-y-4">
+      <div className="p-4 space-y-3">
         {/* Add new entry */}
-        <Card>
-          <CardHeader className="p-3 pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              Dodaj zużycie
-            </CardTitle>
+        <Card className="border-transparent">
+          <CardHeader className="flex-row items-center gap-2 px-4 pb-2 pt-4">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-500/15">
+              <Plus className="h-4 w-4 text-violet-400" />
+            </div>
+            <CardTitle className="text-sm">Dodaj zużycie</CardTitle>
           </CardHeader>
-          <CardContent className="p-3 pt-0 space-y-3">
-            <div>
+          <CardContent className="px-4 pb-4 pt-0 space-y-3">
+            <div className="space-y-1.5">
               <Label className="text-xs">Materiał</Label>
               <Select
                 value={selectedMaterial}
                 onValueChange={(v) => setSelectedMaterial(v ?? "")}
               >
-                <SelectTrigger className="h-9">
+                <SelectTrigger className="h-11">
                   <SelectValue placeholder="Wybierz materiał..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -133,18 +132,19 @@ export function ZuzycieClient({
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="space-y-1.5">
               <Label className="text-xs">Ilość</Label>
               <Input
                 type="number"
+                inputMode="numeric"
                 min="1"
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
                 placeholder="Ilość"
-                className="h-9"
+                className="h-11"
               />
             </div>
-            <div>
+            <div className="space-y-1.5">
               <Label className="text-xs">Uwagi (opcjonalnie)</Label>
               <Textarea
                 value={notes}
@@ -156,28 +156,35 @@ export function ZuzycieClient({
             <Button
               onClick={addEntry}
               disabled={!selectedMaterial || !quantity || saving}
-              className="w-full bg-red-600 hover:bg-red-700"
+              className="h-11 w-full bg-primary font-semibold hover:bg-primary/90"
             >
-              {saving ? "Dodawanie..." : "Dodaj"}
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Dodawanie...
+                </>
+              ) : (
+                "Dodaj"
+              )}
             </Button>
           </CardContent>
         </Card>
 
         {/* Today's entries */}
-        <Card>
-          <CardHeader className="p-3 pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Package className="h-4 w-4" />
-              Dzisiejsze zużycie
-            </CardTitle>
+        <Card className="border-transparent">
+          <CardHeader className="flex-row items-center gap-2 px-4 pb-2 pt-4">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-500/15">
+              <Package className="h-4 w-4 text-amber-400" />
+            </div>
+            <CardTitle className="text-sm">Dzisiejsze zużycie</CardTitle>
           </CardHeader>
-          <CardContent className="p-3 pt-0">
+          <CardContent className="px-4 pb-4 pt-0">
             {loading ? (
-              <div className="flex justify-center py-4">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
+              <div className="flex justify-center py-6">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : entries.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
+              <p className="text-sm text-muted-foreground text-center py-6">
                 Brak wpisów na dziś
               </p>
             ) : (
@@ -185,19 +192,19 @@ export function ZuzycieClient({
                 {entries.map((entry, i) => (
                   <div
                     key={entry.id || i}
-                    className="flex items-center justify-between rounded-lg border p-2"
+                    className="flex items-center justify-between rounded-lg border border-border/50 p-3"
                   >
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <span className="text-sm font-medium">
                         {entry.materialName}
                       </span>
                       {entry.notes && (
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground truncate">
                           {entry.notes}
                         </p>
                       )}
                     </div>
-                    <Badge variant="secondary">{entry.quantity}</Badge>
+                    <Badge variant="secondary" className="ml-2 shrink-0">{entry.quantity}</Badge>
                   </div>
                 ))}
               </div>
@@ -209,7 +216,7 @@ export function ZuzycieClient({
         {isLeader && (
           <Button
             variant="outline"
-            className="w-full"
+            className="h-11 w-full"
             onClick={() => (window.location.href = "/admin/zamowienia")}
           >
             <FileText className="h-4 w-4 mr-2" />

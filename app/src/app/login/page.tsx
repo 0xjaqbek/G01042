@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -14,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const [name, setName] = useState("");
@@ -43,21 +43,31 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <Card className="w-full max-w-sm">
-        <CardHeader className="text-center">
-          <Image
-            src="/icons/icon-192.png"
-            alt="G01042 Przywidz"
-            width={64}
-            height={64}
-            priority
-            className="mx-auto mb-4 rounded-2xl"
-          />
-          <CardTitle className="text-2xl">G01042 Przywidz</CardTitle>
-          <CardDescription>Zaloguj się do systemu zespołu</CardDescription>
+    <div className="flex min-h-dvh flex-col items-center justify-center p-4">
+      <Card className="w-full max-w-sm border-border/50">
+        <CardHeader className="items-center pb-2 pt-8 text-center">
+          {/* SVG ambulance cross logo */}
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary">
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              className="h-8 w-8 text-primary-foreground"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M11 2h2v8h8v2h-8v8h-2v-8H3v-2h8z" fill="currentColor" stroke="none" />
+            </svg>
+          </div>
+          <CardTitle className="text-2xl font-bold tracking-tight">
+            G01042
+          </CardTitle>
+          <CardDescription className="text-sm">
+            Zespół ratownictwa medycznego Przywidz
+          </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pb-8">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Imię i nazwisko</Label>
@@ -65,7 +75,9 @@ export default function LoginPage() {
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="np. Kowalski Jan"
+                placeholder="np. Reszczyński Łukasz"
+                autoComplete="name"
+                className="h-11"
                 required
               />
             </div>
@@ -75,18 +87,34 @@ export default function LoginPage() {
                 id="pin"
                 type="password"
                 inputMode="numeric"
+                pattern="[0-9]*"
                 maxLength={6}
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
-                placeholder="••••"
+                placeholder="Wpisz PIN"
+                autoComplete="current-password"
+                className="h-11"
                 required
               />
             </div>
             {error && (
-              <p className="text-sm text-destructive">{error}</p>
+              <div className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">
+                {error}
+              </div>
             )}
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Logowanie..." : "Zaloguj"}
+            <Button
+              type="submit"
+              className="h-11 w-full bg-primary font-semibold hover:bg-primary/90"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Logowanie...
+                </>
+              ) : (
+                "Zaloguj się"
+              )}
             </Button>
           </form>
         </CardContent>

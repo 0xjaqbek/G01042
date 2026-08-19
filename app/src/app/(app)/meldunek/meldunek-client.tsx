@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertTriangle, CheckCircle2, Plus, History } from "lucide-react";
+import { AlertTriangle, CheckCircle2, History, Loader2, MapPin, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Incident {
@@ -100,7 +100,6 @@ export function MeldunekClient({
     if (res.ok) {
       const data = await res.json();
       setIncidents([data.incident, ...incidents]);
-      // Reset form
       setType("");
       setSeverity("");
       setDescription("");
@@ -118,29 +117,29 @@ export function MeldunekClient({
         title="Meldunek kierowcy"
         description="Zgłoszenia zdarzeń i usterek pojazdu"
       />
-      <div className="p-4 space-y-4">
+      <div className="p-4 space-y-3">
         {!showForm ? (
           <Button
             onClick={() => setShowForm(true)}
-            className="w-full bg-red-600 hover:bg-red-700"
+            className="h-11 w-full bg-primary font-semibold hover:bg-primary/90"
           >
             <Plus className="h-4 w-4 mr-2" />
             Nowe zgłoszenie
           </Button>
         ) : (
-          <Card>
-            <CardHeader className="p-3 pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
+          <Card className="border-transparent">
+            <CardHeader className="flex-row items-center gap-2 px-4 pb-2 pt-4">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-red-500/15">
                 <AlertTriangle className="h-4 w-4 text-red-400" />
-                Nowe zgłoszenie
-              </CardTitle>
+              </div>
+              <CardTitle className="text-sm">Nowe zgłoszenie</CardTitle>
             </CardHeader>
-            <CardContent className="p-3 pt-0">
+            <CardContent className="px-4 pb-4 pt-0">
               <form onSubmit={handleSubmit} className="space-y-3">
-                <div>
+                <div className="space-y-1.5">
                   <Label className="text-xs">Typ zdarzenia</Label>
                   <Select value={type} onValueChange={(v) => setType(v ?? "")}>
-                    <SelectTrigger className="h-9">
+                    <SelectTrigger className="h-11">
                       <SelectValue placeholder="Wybierz typ..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -153,10 +152,10 @@ export function MeldunekClient({
                   </Select>
                 </div>
 
-                <div>
+                <div className="space-y-1.5">
                   <Label className="text-xs">Stopień ważności</Label>
                   <Select value={severity} onValueChange={(v) => setSeverity(v ?? "")}>
-                    <SelectTrigger className="h-9">
+                    <SelectTrigger className="h-11">
                       <SelectValue placeholder="Wybierz..." />
                     </SelectTrigger>
                     <SelectContent>
@@ -169,7 +168,7 @@ export function MeldunekClient({
                   </Select>
                 </div>
 
-                <div>
+                <div className="space-y-1.5">
                   <Label className="text-xs">Opis zdarzenia</Label>
                   <Textarea
                     value={description}
@@ -180,28 +179,29 @@ export function MeldunekClient({
                   />
                 </div>
 
-                <div>
+                <div className="space-y-1.5">
                   <Label className="text-xs">Lokalizacja</Label>
                   <Input
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                     placeholder="np. Przywidz, droga nr 224"
-                    className="h-9"
+                    className="h-11"
                   />
                 </div>
 
-                <div>
+                <div className="space-y-1.5">
                   <Label className="text-xs">Przebieg (km)</Label>
                   <Input
                     type="number"
+                    inputMode="numeric"
                     value={mileage}
                     onChange={(e) => setMileage(e.target.value)}
                     placeholder="Stan licznika"
-                    className="h-9"
+                    className="h-11"
                   />
                 </div>
 
-                <div>
+                <div className="space-y-1.5">
                   <Label className="text-xs">Podjęte działania</Label>
                   <Textarea
                     value={actionTaken}
@@ -211,21 +211,28 @@ export function MeldunekClient({
                   />
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 pt-1">
                   <Button
                     type="button"
                     variant="secondary"
-                    className="flex-1"
+                    className="h-11 flex-1"
                     onClick={() => setShowForm(false)}
                   >
                     Anuluj
                   </Button>
                   <Button
                     type="submit"
-                    className="flex-1 bg-red-600 hover:bg-red-700"
+                    className="h-11 flex-1 bg-primary font-semibold hover:bg-primary/90"
                     disabled={submitting || !type || !severity || !description}
                   >
-                    {submitting ? "Wysyłanie..." : "Wyślij"}
+                    {submitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Wysyłanie...
+                      </>
+                    ) : (
+                      "Wyślij"
+                    )}
                   </Button>
                 </div>
               </form>
@@ -234,20 +241,20 @@ export function MeldunekClient({
         )}
 
         {/* History */}
-        <Card>
-          <CardHeader className="p-3 pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <History className="h-4 w-4" />
-              Historia zgłoszeń
-            </CardTitle>
+        <Card className="border-transparent">
+          <CardHeader className="flex-row items-center gap-2 px-4 pb-2 pt-4">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/15">
+              <History className="h-4 w-4 text-blue-400" />
+            </div>
+            <CardTitle className="text-sm">Historia zgłoszeń</CardTitle>
           </CardHeader>
-          <CardContent className="p-3 pt-0">
+          <CardContent className="px-4 pb-4 pt-0">
             {loading ? (
-              <div className="flex justify-center py-4">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
+              <div className="flex justify-center py-6">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : incidents.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
+              <p className="text-sm text-muted-foreground text-center py-6">
                 Brak zgłoszeń
               </p>
             ) : (
@@ -262,16 +269,16 @@ export function MeldunekClient({
                       className={cn(
                         "rounded-lg border p-3",
                         incident.isResolved
-                          ? "border-green-800/50 bg-green-950/10"
-                          : "border-border"
+                          ? "border-emerald-800/50 bg-emerald-950/10"
+                          : "border-border/50"
                       )}
                     >
                       <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <Badge
                               className={cn(
-                                "text-xs text-white",
+                                "text-[10px] text-white",
                                 severityOpt?.color || "bg-gray-600"
                               )}
                             >
@@ -284,17 +291,18 @@ export function MeldunekClient({
                           <p className="text-sm font-medium">
                             {INCIDENT_TYPES.find((t) => t.value === incident.type)?.label}
                           </p>
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                             {incident.description}
                           </p>
                           {incident.location && (
-                            <p className="text-xs text-muted-foreground mt-1">
-                              📍 {incident.location}
+                            <p className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                              <MapPin className="h-3 w-3 shrink-0" />
+                              {incident.location}
                             </p>
                           )}
                         </div>
                         {incident.isResolved && (
-                          <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+                          <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
                         )}
                       </div>
                     </div>

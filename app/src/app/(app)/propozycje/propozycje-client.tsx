@@ -12,17 +12,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, Send, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Send, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const SHIFT_OPTIONS = ["D-K", "D-R", "N-K", "N-R", "DN-K", "DN-R"] as const;
 const SHIFT_COLORS: Record<string, string> = {
-  "D-K": "bg-blue-600/80",
-  "D-R": "bg-blue-400/80",
-  "N-K": "bg-indigo-700/80",
-  "N-R": "bg-indigo-500/80",
-  "DN-K": "bg-red-600/80",
-  "DN-R": "bg-red-400/80",
+  "D-K": "bg-blue-600",
+  "D-R": "bg-sky-500",
+  "N-K": "bg-indigo-700",
+  "N-R": "bg-violet-600",
+  "DN-K": "bg-red-700",
+  "DN-R": "bg-rose-500",
 };
 
 const DAY_NAMES = ["Nd", "Pn", "Wt", "Śr", "Cz", "Pt", "Sb"];
@@ -33,7 +33,7 @@ const MONTH_NAMES = [
 
 interface ProposalDay {
   day: number;
-  shift: string; // e.g. "DN-K"
+  shift: string;
 }
 
 export function PropozycjeClient({
@@ -45,7 +45,6 @@ export function PropozycjeClient({
   userName: string;
   userRole: string;
 }) {
-  // Next month by default
   const now = new Date();
   const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
   const [year, setYear] = useState(nextMonthDate.getFullYear());
@@ -59,7 +58,6 @@ export function PropozycjeClient({
   const defaultShift = userRole === "kierowca" ? "DN-K" : "DN-R";
   const isFirstAllowedMonth = year === nextMonthDate.getFullYear() && month === nextMonthDate.getMonth() + 1;
 
-  // Load existing proposal
   useEffect(() => {
     fetch(`/api/proposals?userId=${userId}&year=${year}&month=${month}`)
       .then((r) => r.json())
@@ -90,7 +88,6 @@ export function PropozycjeClient({
     );
   }
 
-  // Calculate hours
   const totalHours = selectedDays.reduce((sum, d) => {
     if (d.shift.startsWith("DN")) return sum + 24;
     return sum + 12;
@@ -145,7 +142,7 @@ export function PropozycjeClient({
         title="Propozycje dyżurów"
         description={`${userName} — ${MONTH_NAMES[month - 1]} ${year}`}
       />
-      <div className="p-4 space-y-4">
+      <div className="p-4 space-y-3">
         {/* Month nav */}
         <div className="flex items-center justify-between">
           <Button variant="ghost" size="icon" onClick={prevMonth} disabled={isFirstAllowedMonth} aria-label="Poprzedni miesiąc">
@@ -164,8 +161,8 @@ export function PropozycjeClient({
                   : "secondary"
               }
               className={cn(
-                "text-xs mt-1",
-                status === "approved" && "bg-green-600",
+                "text-[11px] mt-1",
+                status === "approved" && "bg-emerald-600",
                 status === "submitted" && "bg-yellow-600"
               )}
             >
@@ -188,19 +185,17 @@ export function PropozycjeClient({
           {DAY_NAMES.map((d) => (
             <div
               key={d}
-              className="text-center text-xs font-medium text-muted-foreground py-1"
+              className="text-center text-[11px] font-medium text-muted-foreground py-1.5"
             >
               {d}
             </div>
           ))}
-          {/* Empty cells for first day offset */}
           {Array.from(
             { length: new Date(year, month - 1, 1).getDay() },
             (_, i) => (
               <div key={`empty-${i}`} />
             )
           )}
-          {/* Day cells */}
           {Array.from({ length: daysInMonth }, (_, i) => {
             const day = i + 1;
             const selected = selectedDays.find((d) => d.day === day);
@@ -213,10 +208,10 @@ export function PropozycjeClient({
                 onClick={() => toggleDay(day)}
                 disabled={status === "submitted" || status === "approved"}
                 className={cn(
-                  "relative flex flex-col items-center rounded-lg p-1.5 text-sm transition-colors min-h-[52px]",
+                  "relative flex flex-col items-center justify-center rounded-lg p-1.5 text-sm transition-colors min-h-[52px]",
                   selected
-                    ? SHIFT_COLORS[selected.shift] || "bg-red-600/80"
-                    : "bg-card hover:bg-accent",
+                    ? cn(SHIFT_COLORS[selected.shift] || "bg-red-600", "text-white")
+                    : "bg-card hover:bg-accent active:bg-accent/80",
                   isWeekend && !selected && "text-red-400",
                   (status === "submitted" || status === "approved") &&
                     "opacity-75 cursor-not-allowed"
@@ -224,7 +219,7 @@ export function PropozycjeClient({
               >
                 <span className="font-medium">{day}</span>
                 {selected && (
-                  <span className="text-[10px] font-bold text-white">
+                  <span className="text-[10px] font-bold">
                     {selected.shift}
                   </span>
                 )}
@@ -235,24 +230,24 @@ export function PropozycjeClient({
 
         {/* Shift type selector for selected days */}
         {selectedDays.length > 0 && status === "draft" && (
-          <Card>
-            <CardHeader className="p-3">
+          <Card className="border-transparent">
+            <CardHeader className="px-4 pb-2 pt-4">
               <CardTitle className="text-sm">Wybrane dyżury</CardTitle>
             </CardHeader>
-            <CardContent className="p-3 pt-0 space-y-2">
+            <CardContent className="px-4 pb-4 pt-0 space-y-2">
               {selectedDays
                 .sort((a, b) => a.day - b.day)
                 .map((d) => (
                   <div
                     key={d.day}
-                    className="flex items-center justify-between gap-2"
+                    className="flex items-center justify-between gap-2 rounded-lg border border-border/50 p-2"
                   >
-                    <span className="text-sm font-medium w-8">{d.day}</span>
+                    <span className="text-sm font-semibold w-8 text-center">{d.day}</span>
                     <Select
                       value={d.shift}
                       onValueChange={(v) => changeShift(d.day, v ?? defaultShift)}
                     >
-                      <SelectTrigger className="h-8 w-24 text-xs">
+                      <SelectTrigger className="h-9 w-24 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -266,10 +261,11 @@ export function PropozycjeClient({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-9 w-9"
                       onClick={() => toggleDay(d.day)}
+                      aria-label={`Usuń dzień ${d.day}`}
                     >
-                      <Trash2 className="h-3 w-3" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
                 ))}
@@ -278,7 +274,7 @@ export function PropozycjeClient({
         )}
 
         {/* Summary */}
-        <Card className="p-3">
+        <Card className="border-transparent p-4">
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">Ilość dyżurów:</span>
             <span className="font-medium">{selectedDays.length}</span>
@@ -294,19 +290,35 @@ export function PropozycjeClient({
           <div className="flex gap-2">
             <Button
               variant="secondary"
-              className="flex-1"
+              className="h-11 flex-1"
               onClick={saveDraft}
               disabled={saving}
             >
-              {saving ? "Zapisywanie..." : "Zapisz szkic"}
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Zapisywanie...
+                </>
+              ) : (
+                "Zapisz szkic"
+              )}
             </Button>
             <Button
-              className="flex-1 bg-red-600 hover:bg-red-700"
+              className="h-11 flex-1 bg-primary font-semibold hover:bg-primary/90"
               onClick={submitProposal}
               disabled={submitting || selectedDays.length === 0}
             >
-              <Send className="h-4 w-4 mr-2" />
-              {submitting ? "Wysyłanie..." : "Wyślij"}
+              {submitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Wysyłanie...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Wyślij
+                </>
+              )}
             </Button>
           </div>
         )}

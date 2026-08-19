@@ -29,35 +29,35 @@ export function PageHeader({
 
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div className="flex items-center gap-2 px-3 py-3">
+      <div className="flex items-center gap-2 px-4 py-3">
         {showBackButton && (
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 shrink-0"
+            className="h-9 w-9 shrink-0"
             onClick={goBack}
             aria-label="Wstecz"
             title="Wstecz"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-5 w-5" />
           </Button>
         )}
         <div className="min-w-0 flex-1">
-          <h1 className="text-lg font-semibold">{title}</h1>
+          <h1 className="text-lg font-bold tracking-tight">{title}</h1>
           {description && (
             <p className="truncate text-xs text-muted-foreground">{description}</p>
           )}
         </div>
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1.5">
           {session?.user && (
             <>
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-[11px]">
                 {session.user.isLeader ? "Lider" : session.user.role === "kierowca" ? "Kierowca" : "Ratownik"}
               </Badge>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-8 w-8"
+                className="h-9 w-9"
                 onClick={() => signOut({ callbackUrl: "/login" })}
                 aria-label="Wyloguj"
                 title="Wyloguj"

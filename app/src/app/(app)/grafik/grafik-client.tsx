@@ -132,7 +132,7 @@ export function GrafikClient({ userId, initialYear, initialMonth }: { userId: st
 
   return <>
     <PageHeader title="Grafik dyżurów" />
-    <div className="space-y-4 p-4">
+    <div className="space-y-3 p-4">
       <div className="flex items-center justify-between">
         <Button variant="ghost" size="icon" onClick={() => changeMonth(-1)} aria-label="Poprzedni miesiąc"><ChevronLeft /></Button>
         <h2 className="text-lg font-semibold">{MONTH_NAMES[month - 1]} {year}</h2>
@@ -149,9 +149,37 @@ export function GrafikClient({ userId, initialYear, initialMonth }: { userId: st
         <Button size="sm" className="shrink-0" onClick={openAddDialog}><Plus className="mr-1 h-4 w-4" />Dodaj</Button>
       </div>
 
-      {error && <div className="rounded-md border border-red-700/50 bg-red-950/20 px-3 py-2 text-xs text-red-300">{error}</div>}
+      {error && <div className="rounded-lg border border-red-700/50 bg-red-950/20 px-3 py-2 text-xs text-red-300" role="alert">{error}</div>}
 
-      {loading ? <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-red-500" /></div> : <div className="overflow-x-auto rounded-md border border-border">
+      {loading ? <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : view === "mine" ? (() => {
+        const myShifts = userMap.get(Number(userId))?.shifts ?? new Map();
+        const firstDayOfWeek = new Date(year, month - 1, 1).getDay();
+        const offset = firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1;
+        return <div className="rounded-lg border border-border overflow-hidden">
+          <div className="grid grid-cols-7 bg-muted/40">
+            {["Pn", "Wt", "Śr", "Cz", "Pt", "Sb", "Nd"].map((d, i) => (
+              <div key={d} className={cn("py-2 text-center text-[11px] font-medium", i >= 5 && "text-red-400")}>{d}</div>
+            ))}
+          </div>
+          <div className="grid grid-cols-7">
+            {Array.from({ length: offset }, (_, i) => <div key={`e-${i}`} className="border-t border-border/30" />)}
+            {days.map((day) => {
+              const date = new Date(year, month - 1, day);
+              const dow = date.getDay();
+              const isWeekend = dow === 0 || dow === 6;
+              const shift = myShifts.get(day);
+              const label = shift ? `${shift.shiftType}-${shift.shiftFunction}` : null;
+              const ext = externalByDay.get(day) ?? [];
+              const hasConflict = ext.some((s) => conflictDates.has(s.date));
+              return <div key={day} className={cn("flex min-h-[56px] flex-col items-center gap-0.5 border-t border-border/30 px-0.5 py-1.5", isWeekend && "bg-muted/20")}>
+                <span className={cn("text-xs font-medium", isWeekend && "text-red-400")}>{day}</span>
+                {label && <div className={cn("w-full rounded-sm py-0.5 text-center text-[10px] font-bold", SHIFT_COLORS[label])}>{label}</div>}
+                {ext.map((s) => <div key={s.id} title={s.workplace} className={cn("w-full rounded-sm bg-teal-600 py-0.5 text-center text-[10px] font-bold text-white", hasConflict && "bg-red-700 ring-1 ring-red-400")}>{s.shiftType}*</div>)}
+              </div>;
+            })}
+          </div>
+        </div>;
+      })() : <div className="overflow-x-auto rounded-md border border-border">
         <table className="min-w-[720px] w-full text-xs">
           <thead><tr className="border-b border-border bg-muted/40"><th className="sticky left-0 z-20 min-w-32 bg-muted px-2 py-2 text-left font-medium">Pracownik</th>{days.map((day) => { const date = new Date(year, month - 1, day); const weekend = date.getDay() === 0 || date.getDay() === 6; return <th key={day} className={cn("min-w-9 px-0.5 py-1 text-center", weekend && "text-red-400")}><span className="block">{day}</span><span className="text-[10px] font-normal text-muted-foreground">{DAY_NAMES_SHORT[date.getDay()]}</span></th>; })}</tr></thead>
           <tbody>

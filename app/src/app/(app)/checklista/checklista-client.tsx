@@ -6,9 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle2, Circle } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ChecklistCategory {
@@ -77,21 +76,6 @@ export function ChecklistaClient({ userId }: { userId: string }) {
     );
   }
 
-  function updateNotes(categoryId: number, itemId: number, notes: string) {
-    setCategories((prev) =>
-      prev.map((cat) =>
-        cat.id === categoryId
-          ? {
-              ...cat,
-              items: cat.items.map((item) =>
-                item.id === itemId ? { ...item, notes } : item
-              ),
-            }
-          : cat
-      )
-    );
-  }
-
   async function saveChecklist() {
     setSaving(true);
     const allItems = categories.flatMap((cat) =>
@@ -128,23 +112,23 @@ export function ChecklistaClient({ userId }: { userId: string }) {
         title="Checklista dzienna"
         description={today}
       />
-      <div className="p-4 space-y-4">
+      <div className="p-4 space-y-3">
         {/* Progress bar */}
-        <Card className="p-3">
+        <Card className="border-transparent p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm text-muted-foreground">Postęp</span>
             <Badge
               variant={progress === 100 ? "default" : "secondary"}
-              className={cn(progress === 100 && "bg-green-600")}
+              className={cn(progress === 100 && "bg-emerald-600")}
             >
               {checkedItems}/{totalItems} ({progress}%)
             </Badge>
           </div>
-          <div className="h-2 rounded-full bg-muted overflow-hidden">
+          <div className="h-2.5 rounded-full bg-muted overflow-hidden">
             <div
               className={cn(
                 "h-full rounded-full transition-all duration-500",
-                progress === 100 ? "bg-green-500" : "bg-red-500"
+                progress === 100 ? "bg-emerald-500" : "bg-primary"
               )}
               style={{ width: `${progress}%` }}
             />
@@ -153,33 +137,35 @@ export function ChecklistaClient({ userId }: { userId: string }) {
 
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : categories.length === 0 ? (
-          <Card className="p-8 text-center text-muted-foreground">
+          <Card className="border-transparent p-8 text-center text-sm text-muted-foreground">
             Brak elementów checklisty. Lider musi dodać elementy.
           </Card>
         ) : (
           categories.map((category) => (
-            <Card key={category.id}>
-              <CardHeader className="p-3 pb-2">
-                <CardTitle className="text-sm flex items-center justify-between">
+            <Card key={category.id} className="border-transparent">
+              <CardHeader className="px-4 pb-2 pt-4">
+                <CardTitle className="flex items-center justify-between text-sm">
                   {category.name}
-                  <Badge variant="secondary" className="text-xs">
+                  <Badge variant="secondary" className="text-[11px]">
                     {category.items.filter((i) => i.checked).length}/
                     {category.items.length}
                   </Badge>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-3 pt-0 space-y-2">
+              <CardContent className="px-4 pb-4 pt-0 space-y-2">
                 {category.items.map((item) => (
-                  <div
+                  <button
+                    type="button"
                     key={item.id}
+                    onClick={() => toggleItem(category.id, item.id)}
                     className={cn(
-                      "rounded-lg border p-3 transition-colors",
+                      "w-full rounded-lg border p-3 text-left transition-colors",
                       item.checked
-                        ? "border-green-800/50 bg-green-950/20"
-                        : "border-border"
+                        ? "border-emerald-800/50 bg-emerald-950/20"
+                        : "border-border/50 active:bg-accent/60"
                     )}
                   >
                     <div className="flex items-start gap-3">
@@ -189,8 +175,9 @@ export function ChecklistaClient({ userId }: { userId: string }) {
                           toggleItem(category.id, item.id)
                         }
                         className="mt-0.5"
+                        tabIndex={-1}
                       />
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         <span
                           className={cn(
                             "text-sm font-medium",
@@ -205,13 +192,17 @@ export function ChecklistaClient({ userId }: { userId: string }) {
                           </p>
                         )}
                         {item.expectedQuantity && (
-                          <div className="flex items-center gap-2 mt-2">
+                          <div
+                            className="flex items-center gap-2 mt-2"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <span className="text-xs text-muted-foreground">
                               Ilość (wymagane: {item.expectedQuantity}):
                             </span>
                             <Input
                               type="number"
-                              className="h-7 w-20 text-xs"
+                              inputMode="numeric"
+                              className="h-9 w-20 text-xs"
                               value={item.quantity ?? ""}
                               onChange={(e) =>
                                 updateQuantity(
@@ -225,7 +216,7 @@ export function ChecklistaClient({ userId }: { userId: string }) {
                         )}
                       </div>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </CardContent>
             </Card>
@@ -234,11 +225,18 @@ export function ChecklistaClient({ userId }: { userId: string }) {
 
         {categories.length > 0 && (
           <Button
-            className="w-full bg-red-600 hover:bg-red-700"
+            className="h-11 w-full bg-primary font-semibold hover:bg-primary/90"
             onClick={saveChecklist}
             disabled={saving}
           >
-            {saving ? "Zapisywanie..." : "Zapisz checklistę"}
+            {saving ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Zapisywanie...
+              </>
+            ) : (
+              "Zapisz checklistę"
+            )}
           </Button>
         )}
       </div>

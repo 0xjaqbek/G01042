@@ -1,86 +1,87 @@
 "use client";
 
 import { PageHeader } from "@/components/page-header";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, CalendarDays, ClipboardCheck, Package, AlertTriangle } from "lucide-react";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Users, CalendarDays, ClipboardCheck, Package, AlertTriangle, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
+
+const adminItems = [
+  {
+    href: "/admin/zespol",
+    title: "Zespół",
+    description: "Zarządzaj członkami, resetuj PIN-y",
+    icon: Users,
+    iconBg: "bg-blue-500/15",
+    iconColor: "text-blue-400",
+  },
+  {
+    href: "/admin/grafik",
+    title: "Propozycje grafiku",
+    description: "Przeglądaj i zatwierdzaj dyspozycyjność",
+    icon: CalendarDays,
+    iconBg: "bg-emerald-500/15",
+    iconColor: "text-emerald-400",
+  },
+  {
+    href: "/admin/checklisty",
+    title: "Przegląd checklist",
+    description: "Status wypełnienia checklist dziennych",
+    icon: ClipboardCheck,
+    iconBg: "bg-amber-500/15",
+    iconColor: "text-amber-400",
+  },
+  {
+    href: "/admin/zamowienia",
+    title: "Zamówienia",
+    description: "Generuj zamówienia na podstawie zużycia",
+    icon: Package,
+    iconBg: "bg-violet-500/15",
+    iconColor: "text-violet-400",
+  },
+  {
+    href: "/admin/meldunki",
+    title: "Meldunki",
+    description: "Wszystkie zgłoszenia zdarzeń",
+    icon: AlertTriangle,
+    iconBg: "bg-red-500/15",
+    iconColor: "text-red-400",
+  },
+];
 
 export function AdminClient() {
   return (
     <>
       <PageHeader title="Panel lidera" description="Zarządzanie zespołem G01042" />
-      <div className="p-4 space-y-4">
-        <div className="grid gap-3">
-          <Link href="/admin/zespol">
-            <Card className="transition-colors hover:bg-accent/50">
-              <CardHeader className="flex flex-row items-center gap-4 p-4">
-                <Users className="h-8 w-8 text-blue-400" />
-                <div>
-                  <CardTitle className="text-base">Zespół</CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    Zarządzaj członkami, resetuj PIN-y
-                  </p>
-                </div>
-              </CardHeader>
-            </Card>
-          </Link>
-
-          <Link href="/admin/grafik">
-            <Card className="transition-colors hover:bg-accent/50">
-              <CardHeader className="flex flex-row items-center gap-4 p-4">
-                <CalendarDays className="h-8 w-8 text-green-400" />
-                <div>
-                  <CardTitle className="text-base">Propozycje grafiku</CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    Przeglądaj i zatwierdzaj dyspozycyjność
-                  </p>
-                </div>
-              </CardHeader>
-            </Card>
-          </Link>
-
-          <Link href="/admin/checklisty">
-            <Card className="transition-colors hover:bg-accent/50">
-              <CardHeader className="flex flex-row items-center gap-4 p-4">
-                <ClipboardCheck className="h-8 w-8 text-yellow-400" />
-                <div>
-                  <CardTitle className="text-base">Przegląd checklist</CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    Status wypełnienia checklist dziennych
-                  </p>
-                </div>
-              </CardHeader>
-            </Card>
-          </Link>
-
-          <Link href="/admin/zamowienia">
-            <Card className="transition-colors hover:bg-accent/50">
-              <CardHeader className="flex flex-row items-center gap-4 p-4">
-                <Package className="h-8 w-8 text-purple-400" />
-                <div>
-                  <CardTitle className="text-base">Zamówienia</CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    Generuj zamówienia na podstawie zużycia
-                  </p>
-                </div>
-              </CardHeader>
-            </Card>
-          </Link>
-
-          <Link href="/admin/meldunki">
-            <Card className="transition-colors hover:bg-accent/50">
-              <CardHeader className="flex flex-row items-center gap-4 p-4">
-                <AlertTriangle className="h-8 w-8 text-red-400" />
-                <div>
-                  <CardTitle className="text-base">Meldunki</CardTitle>
-                  <p className="text-xs text-muted-foreground">
-                    Wszystkie zgłoszenia zdarzeń
-                  </p>
-                </div>
-              </CardHeader>
-            </Card>
-          </Link>
-        </div>
+      <div className="p-4 space-y-3">
+        {adminItems.map((item) => {
+          const Icon = item.icon;
+          return (
+            <Link key={item.href} href={item.href}>
+              <Card className="press-scale cursor-pointer border-transparent bg-card hover:bg-accent/60">
+                <CardHeader className="flex flex-row items-center gap-4 p-4">
+                  <div
+                    className={cn(
+                      "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl",
+                      item.iconBg
+                    )}
+                  >
+                    <Icon className={cn("h-5 w-5", item.iconColor)} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <CardTitle className="text-[15px] font-semibold">
+                      {item.title}
+                    </CardTitle>
+                    <CardDescription className="text-xs leading-snug">
+                      {item.description}
+                    </CardDescription>
+                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </CardHeader>
+              </Card>
+            </Link>
+          );
+        })}
       </div>
     </>
   );

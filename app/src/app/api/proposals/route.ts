@@ -9,9 +9,17 @@ export async function GET(request: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
+  const nextMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1);
   const userId = parseInt(searchParams.get("userId") || session.user.id);
-  const year = parseInt(searchParams.get("year") || String(new Date().getFullYear()));
-  const month = parseInt(searchParams.get("month") || String(new Date().getMonth() + 2));
+  const year = parseInt(searchParams.get("year") || String(nextMonth.getFullYear()));
+  const month = parseInt(searchParams.get("month") || String(nextMonth.getMonth() + 1));
+
+  if (!isFutureMonth(year, month)) {
+    return NextResponse.json({ error: "Propozycje są dostępne od następnego miesiąca" }, { status: 400 });
+  }
+  if (String(userId) !== session.user.id && !session.user.isLeader) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const [proposal] = await db
     .select()
@@ -48,6 +56,10 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   const { userId, year, month, entries, status } = body;
+
+  if (!isFutureMonth(Number(year), Number(month))) {
+    return NextResponse.json({ error: "Propozycje są dostępne od następnego miesiąca" }, { status: 400 });
+  }
 
   // Verify user can only submit for themselves (unless leader)
   if (String(userId) !== session.user.id && !session.user.isLeader) {
@@ -105,4 +117,10 @@ export async function POST(request: NextRequest) {
   }
 
   return NextResponse.json({ success: true, proposalId: proposal.id });
+}
+
+function isFutureMonth(year: number, month: number) {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) return false;
+  const now = new Date();
+  return year * 12 + month > now.getFullYear() * 12 + now.getMonth() + 1;
 }

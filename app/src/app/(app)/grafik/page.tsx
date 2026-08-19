@@ -59,7 +59,6 @@ export default async function GrafikPage({
   return (
     <GrafikClient
       userId={session.user.id}
-      isLeader={session.user.isLeader}
       initialYear={initialScheduleMonth.year}
       initialMonth={initialScheduleMonth.month}
     />

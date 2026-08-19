@@ -52,6 +52,19 @@ export const scheduleEntries = pgTable("schedule_entries", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// Private shifts from other workplaces, visible only to their owner.
+export const externalShiftEntries = pgTable("external_shift_entries", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  date: date("date").notNull(),
+  shiftType: shiftTypeEnum("shift_type").notNull(),
+  workplace: varchar("workplace", { length: 100 }).notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // ─── Shift Proposals ───
 export const shiftProposals = pgTable("shift_proposals", {
   id: serial("id").primaryKey(),

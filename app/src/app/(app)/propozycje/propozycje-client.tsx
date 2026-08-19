@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -57,6 +57,7 @@ export function PropozycjeClient({
 
   const daysInMonth = new Date(year, month, 0).getDate();
   const defaultShift = userRole === "kierowca" ? "DN-K" : "DN-R";
+  const isFirstAllowedMonth = year === nextMonthDate.getFullYear() && month === nextMonthDate.getMonth() + 1;
 
   // Load existing proposal
   useEffect(() => {
@@ -129,6 +130,7 @@ export function PropozycjeClient({
   }
 
   function prevMonth() {
+    if (isFirstAllowedMonth) return;
     if (month === 1) { setMonth(12); setYear(year - 1); }
     else setMonth(month - 1);
   }
@@ -146,7 +148,7 @@ export function PropozycjeClient({
       <div className="p-4 space-y-4">
         {/* Month nav */}
         <div className="flex items-center justify-between">
-          <Button variant="ghost" size="icon" onClick={prevMonth}>
+          <Button variant="ghost" size="icon" onClick={prevMonth} disabled={isFirstAllowedMonth} aria-label="Poprzedni miesiąc">
             <ChevronLeft className="h-5 w-5" />
           </Button>
           <div className="text-center">
@@ -176,7 +178,7 @@ export function PropozycjeClient({
                 : "Odrzucone"}
             </Badge>
           </div>
-          <Button variant="ghost" size="icon" onClick={nextMonth}>
+          <Button variant="ghost" size="icon" onClick={nextMonth} aria-label="Następny miesiąc">
             <ChevronRight className="h-5 w-5" />
           </Button>
         </div>

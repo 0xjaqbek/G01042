@@ -22,7 +22,7 @@ const navItems: NavItem[] = [
   { href: "/grafik", label: "Grafik", icon: CalendarDays },
   { href: "/checklista", label: "Kontrola", icon: ClipboardList },
   { href: "/zuzycie", label: "Materiały", icon: Package },
-  { href: "/meldunek", label: "Meldunek", icon: AlertTriangle },
+  { href: "/zgloszenia", label: "Zgłoszenia", icon: AlertTriangle },
 ];
 
 export function BottomNav({ isLeader }: { isLeader: boolean }) {

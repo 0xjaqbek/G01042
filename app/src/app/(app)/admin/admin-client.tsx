@@ -49,8 +49,8 @@ const adminItems = [
   },
   {
     href: "/admin/meldunki",
-    title: "Meldunki",
-    description: "Wszystkie zgłoszenia zdarzeń",
+    title: "Zgłoszenia",
+    description: "Wszystkie zgłoszenia i incydenty",
     icon: AlertTriangle,
     iconBg: "bg-red-500/15",
     iconColor: "text-red-400",

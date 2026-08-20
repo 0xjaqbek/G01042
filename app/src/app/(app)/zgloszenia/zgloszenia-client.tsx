@@ -11,11 +11,13 @@ import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AlertTriangle, CheckCircle2, History, Loader2, MapPin, Plus } from "lucide-react";
+import { AlertTriangle, Ambulance, CheckCircle2, History, Loader2, MapPin, MessageSquare, Plus, ShieldAlert, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Incident {
@@ -31,14 +33,49 @@ interface Incident {
   createdAt: string;
 }
 
-const INCIDENT_TYPES = [
-  { value: "uszkodzenie", label: "Uszkodzenie pojazdu" },
-  { value: "awaria", label: "Awaria mechaniczna" },
-  { value: "kolizja", label: "Kolizja / wypadek" },
-  { value: "opona", label: "Problem z oponą" },
-  { value: "elektryka", label: "Usterka elektryczna" },
-  { value: "inne", label: "Inne" },
+const INCIDENT_CATEGORIES = [
+  {
+    label: "Pojazd",
+    icon: Truck,
+    types: [
+      { value: "uszkodzenie", label: "Uszkodzenie pojazdu" },
+      { value: "awaria", label: "Awaria mechaniczna" },
+      { value: "kolizja", label: "Kolizja / wypadek drogowy" },
+      { value: "opona", label: "Problem z oponą" },
+      { value: "elektryka", label: "Usterka elektryczna" },
+    ],
+  },
+  {
+    label: "Medyczne",
+    icon: Ambulance,
+    types: [
+      { value: "zdarzenie-niepozadane", label: "Zdarzenie niepożądane" },
+      { value: "sprzet-medyczny", label: "Awaria sprzętu medycznego" },
+      { value: "lek", label: "Problem z lekiem" },
+      { value: "ekspozycja", label: "Ekspozycja zawodowa" },
+    ],
+  },
+  {
+    label: "Incydent",
+    icon: ShieldAlert,
+    types: [
+      { value: "incydent-pacjent", label: "Incydent z pacjentem" },
+      { value: "incydent-zespol", label: "Incydent w zespole" },
+      { value: "agresja", label: "Agresja wobec załogi" },
+    ],
+  },
+  {
+    label: "Inne",
+    icon: MessageSquare,
+    types: [
+      { value: "wiadomosc", label: "Wiadomość do lidera" },
+      { value: "uwaga", label: "Uwaga / sugestia" },
+      { value: "inne", label: "Inne" },
+    ],
+  },
 ];
+
+const ALL_TYPES = INCIDENT_CATEGORIES.flatMap((c) => c.types);
 
 const SEVERITY_OPTIONS = [
   { value: "info", label: "Informacja", color: "bg-blue-600" },
@@ -47,7 +84,21 @@ const SEVERITY_OPTIONS = [
   { value: "critical", label: "Krytyczne", color: "bg-red-600" },
 ];
 
-export function MeldunekClient({
+const CATEGORY_COLORS: Record<string, string> = {
+  "Pojazd": "text-amber-400",
+  "Medyczne": "text-sky-400",
+  "Incydent": "text-red-400",
+  "Inne": "text-muted-foreground",
+};
+
+function getCategoryForType(type: string) {
+  for (const cat of INCIDENT_CATEGORIES) {
+    if (cat.types.some((t) => t.value === type)) return cat.label;
+  }
+  return "Inne";
+}
+
+export function ZgloszeniaClient({
   userId,
   userName,
 }: {
@@ -59,13 +110,14 @@ export function MeldunekClient({
   const [submitting, setSubmitting] = useState(false);
   const [showForm, setShowForm] = useState(false);
 
-  // Form state
   const [type, setType] = useState("");
   const [severity, setSeverity] = useState("");
   const [description, setDescription] = useState("");
   const [location, setLocation] = useState("");
   const [mileage, setMileage] = useState("");
   const [actionTaken, setActionTaken] = useState("");
+
+  const isVehicleType = INCIDENT_CATEGORIES[0].types.some((t) => t.value === type);
 
   useEffect(() => {
     fetch(`/api/incidents?userId=${userId}`)
@@ -114,8 +166,8 @@ export function MeldunekClient({
   return (
     <>
       <PageHeader
-        title="Meldunek kierowcy"
-        description="Zgłoszenia zdarzeń i usterek pojazdu"
+        title="Zgłoszenia"
+        description="Zdarzenia, incydenty i wiadomości"
       />
       <div className="p-4 space-y-3">
         {!showForm ? (
@@ -137,23 +189,28 @@ export function MeldunekClient({
             <CardContent className="px-4 pb-4 pt-0">
               <form onSubmit={handleSubmit} className="space-y-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Typ zdarzenia</Label>
+                  <Label className="text-xs">Kategoria / typ</Label>
                   <Select value={type} onValueChange={(v) => setType(v ?? "")}>
                     <SelectTrigger className="h-11">
-                      <SelectValue placeholder="Wybierz typ..." />
+                      <SelectValue placeholder="Wybierz typ zgłoszenia..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {INCIDENT_TYPES.map((t) => (
-                        <SelectItem key={t.value} value={t.value}>
-                          {t.label}
-                        </SelectItem>
+                      {INCIDENT_CATEGORIES.map((cat) => (
+                        <SelectGroup key={cat.label}>
+                          <SelectLabel className="text-xs font-semibold">{cat.label}</SelectLabel>
+                          {cat.types.map((t) => (
+                            <SelectItem key={t.value} value={t.value}>
+                              {t.label}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Stopień ważności</Label>
+                  <Label className="text-xs">Priorytet</Label>
                   <Select value={severity} onValueChange={(v) => setSeverity(v ?? "")}>
                     <SelectTrigger className="h-11">
                       <SelectValue placeholder="Wybierz..." />
@@ -169,11 +226,11 @@ export function MeldunekClient({
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Opis zdarzenia</Label>
+                  <Label className="text-xs">Opis</Label>
                   <Textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Opisz co się stało..."
+                    placeholder="Opisz sytuację..."
                     className="min-h-[80px] text-sm"
                     required
                   />
@@ -189,17 +246,19 @@ export function MeldunekClient({
                   />
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Przebieg (km)</Label>
-                  <Input
-                    type="number"
-                    inputMode="numeric"
-                    value={mileage}
-                    onChange={(e) => setMileage(e.target.value)}
-                    placeholder="Stan licznika"
-                    className="h-11"
-                  />
-                </div>
+                {isVehicleType && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs">Przebieg (km)</Label>
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      value={mileage}
+                      onChange={(e) => setMileage(e.target.value)}
+                      placeholder="Stan licznika"
+                      className="h-11"
+                    />
+                  </div>
+                )}
 
                 <div className="space-y-1.5">
                   <Label className="text-xs">Podjęte działania</Label>
@@ -263,6 +322,8 @@ export function MeldunekClient({
                   const severityOpt = SEVERITY_OPTIONS.find(
                     (s) => s.value === incident.severity
                   );
+                  const category = getCategoryForType(incident.type);
+                  const typeLabel = ALL_TYPES.find((t) => t.value === incident.type)?.label || incident.type;
                   return (
                     <div
                       key={incident.id}
@@ -275,7 +336,7 @@ export function MeldunekClient({
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
                             <Badge
                               className={cn(
                                 "text-[10px] text-white",
@@ -284,13 +345,14 @@ export function MeldunekClient({
                             >
                               {severityOpt?.label}
                             </Badge>
+                            <span className={cn("text-[10px] font-medium", CATEGORY_COLORS[category])}>
+                              {category}
+                            </span>
                             <span className="text-xs text-muted-foreground">
                               {incident.date}
                             </span>
                           </div>
-                          <p className="text-sm font-medium">
-                            {INCIDENT_TYPES.find((t) => t.value === incident.type)?.label}
-                          </p>
+                          <p className="text-sm font-medium">{typeLabel}</p>
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                             {incident.description}
                           </p>

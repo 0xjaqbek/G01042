@@ -77,9 +77,9 @@ const menuItems = [
     iconColor: "text-violet-400",
   },
   {
-    href: "/meldunek",
-    title: "Meldunek kierowcy",
-    description: "Zgłoś uszkodzenie, awarię lub zdarzenie",
+    href: "/zgloszenia",
+    title: "Zgłoszenia",
+    description: "Zdarzenia, incydenty i wiadomości do lidera",
     icon: AlertTriangle,
     iconBg: "bg-red-500/15",
     iconColor: "text-red-400",

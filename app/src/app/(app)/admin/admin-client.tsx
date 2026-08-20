@@ -2,11 +2,19 @@
 
 import { PageHeader } from "@/components/page-header";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, CalendarDays, ClipboardCheck, Package, AlertTriangle, ChevronRight } from "lucide-react";
+import { Users, CalendarDays, ClipboardCheck, Package, AlertTriangle, ChevronRight, Megaphone } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 const adminItems = [
+  {
+    href: "/admin/ogloszenia",
+    title: "Ogłoszenia",
+    description: "Tablica informacyjna, pilne komunikaty",
+    icon: Megaphone,
+    iconBg: "bg-sky-500/15",
+    iconColor: "text-sky-400",
+  },
   {
     href: "/admin/zespol",
     title: "Zespół",

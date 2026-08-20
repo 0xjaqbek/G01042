@@ -1,18 +1,23 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
+import { Button } from "@/components/ui/button";
 import {
   Card,
+  CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import {
   CalendarDays,
+  Check,
   ClipboardList,
   Package,
   AlertTriangle,
+  Megaphone,
   Send,
   ShieldCheck,
   ChevronRight,
@@ -26,6 +31,16 @@ interface DashboardProps {
     role: string;
     isLeader: boolean;
   };
+}
+
+interface Announcement {
+  id: number;
+  title: string;
+  body: string | null;
+  priority: "normal" | "urgent";
+  acked: boolean;
+  authorName: string;
+  createdAt: string;
 }
 
 const menuItems = [
@@ -73,6 +88,32 @@ const menuItems = [
 
 export function DashboardClient({ user }: DashboardProps) {
   const firstName = user.name.split(" ").pop();
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+
+  useEffect(() => {
+    fetch("/api/announcements")
+      .then((r) => r.json())
+      .then((data) => setAnnouncements(data.announcements ?? []))
+      .catch(() => {});
+  }, []);
+
+  async function acknowledge(id: number) {
+    await fetch("/api/announcements", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ announcementId: id }),
+    });
+    setAnnouncements((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, acked: true } : a))
+    );
+  }
+
+  // Normal announcements not yet acked
+  const normalUnacked = announcements.filter(
+    (a) => a.priority === "normal" && !a.acked
+  );
+  // All normal (for display — show acked ones too)
+  const normalAll = announcements.filter((a) => a.priority === "normal");
 
   return (
     <>
@@ -81,6 +122,64 @@ export function DashboardClient({ user }: DashboardProps) {
         description="Panel główny G01042 Przywidz"
       />
       <div className="p-4 space-y-3">
+        {/* Announcements card — only when there are normal announcements */}
+        {normalAll.length > 0 && (
+          <Card className="border-sky-800/30 bg-sky-950/15">
+            <CardHeader className="flex-row items-center gap-3 px-4 pb-2 pt-4">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-500/15">
+                <Megaphone className="h-4 w-4 text-sky-400" />
+              </div>
+              <CardTitle className="text-sm">
+                Ogłoszenia
+                {normalUnacked.length > 0 && (
+                  <span className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-600 text-[10px] font-bold text-white">
+                    {normalUnacked.length}
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 pt-0 space-y-2">
+              {normalAll.map((a) => (
+                <div
+                  key={a.id}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg border p-3",
+                    a.acked
+                      ? "border-border/30 opacity-60"
+                      : "border-sky-700/40 bg-sky-950/20"
+                  )}
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className={cn("text-sm font-medium", a.acked && "text-muted-foreground")}>
+                      {a.title}
+                    </p>
+                    {a.body && (
+                      <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                        {a.body}
+                      </p>
+                    )}
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      {a.authorName} · {new Date(a.createdAt).toLocaleDateString("pl")}
+                    </p>
+                  </div>
+                  {a.acked ? (
+                    <Check className="h-4 w-4 shrink-0 text-emerald-500" />
+                  ) : (
+                    <Button
+                      size="sm"
+                      className="h-8 shrink-0 text-xs"
+                      onClick={() => acknowledge(a.id)}
+                    >
+                      <Check className="mr-1 h-3 w-3" />
+                      Przyjmuję
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        )}
+
         {menuItems.map((item) => {
           const Icon = item.icon;
           return (

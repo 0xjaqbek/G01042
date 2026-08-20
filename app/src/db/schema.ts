@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 // Enums
+export const announcementPriorityEnum = pgEnum("announcement_priority", ["normal", "urgent"]);
 export const roleEnum = pgEnum("role", ["kierowca", "ratownik"]);
 export const shiftTypeEnum = pgEnum("shift_type", ["D", "N", "DN"]);
 export const shiftFunctionEnum = pgEnum("shift_function", ["K", "R"]);
@@ -177,6 +178,31 @@ export const supplyOrderItems = pgTable("supply_order_items", {
     .notNull(),
   quantityUsed: integer("quantity_used").notNull(),
   quantityOrdered: integer("quantity_ordered").notNull(),
+});
+
+// ─── Announcements ───
+export const announcements = pgTable("announcements", {
+  id: serial("id").primaryKey(),
+  title: varchar("title", { length: 200 }).notNull(),
+  body: text("body"),
+  priority: announcementPriorityEnum("priority").default("normal").notNull(),
+  createdBy: integer("created_by")
+    .references(() => users.id)
+    .notNull(),
+  expiresAt: timestamp("expires_at"),
+  isActive: boolean("is_active").default(true).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const announcementAcks = pgTable("announcement_acks", {
+  id: serial("id").primaryKey(),
+  announcementId: integer("announcement_id")
+    .references(() => announcements.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: integer("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  ackedAt: timestamp("acked_at").defaultNow().notNull(),
 });
 
 // ─── Vehicle Incident Reports ───

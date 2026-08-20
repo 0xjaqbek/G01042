@@ -5,7 +5,6 @@ import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -51,23 +50,6 @@ export function ChecklistaClient({ userId }: { userId: string }) {
               items: cat.items.map((item) =>
                 item.id === itemId
                   ? { ...item, checked: !item.checked }
-                  : item
-              ),
-            }
-          : cat
-      )
-    );
-  }
-
-  function updateQuantity(categoryId: number, itemId: number, quantity: string) {
-    setCategories((prev) =>
-      prev.map((cat) =>
-        cat.id === categoryId
-          ? {
-              ...cat,
-              items: cat.items.map((item) =>
-                item.id === itemId
-                  ? { ...item, quantity: quantity ? parseInt(quantity) : null }
                   : item
               ),
             }
@@ -186,33 +168,15 @@ export function ChecklistaClient({ userId }: { userId: string }) {
                         >
                           {item.name}
                         </span>
+                        {item.expectedQuantity != null && item.expectedQuantity > 0 && (
+                          <span className="ml-2 text-[11px] text-muted-foreground">
+                            ({item.expectedQuantity})
+                          </span>
+                        )}
                         {item.description && (
                           <p className="text-xs text-muted-foreground mt-0.5">
                             {item.description}
                           </p>
-                        )}
-                        {item.expectedQuantity && (
-                          <div
-                            className="flex items-center gap-2 mt-2"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <span className="text-xs text-muted-foreground">
-                              Ilość (wymagane: {item.expectedQuantity}):
-                            </span>
-                            <Input
-                              type="number"
-                              inputMode="numeric"
-                              className="h-9 w-20 text-xs"
-                              value={item.quantity ?? ""}
-                              onChange={(e) =>
-                                updateQuantity(
-                                  category.id,
-                                  item.id,
-                                  e.target.value
-                                )
-                              }
-                            />
-                          </div>
                         )}
                       </div>
                     </div>

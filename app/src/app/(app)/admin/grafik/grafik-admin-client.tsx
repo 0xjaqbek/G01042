@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { AlertTriangle, CalendarCheck, CalendarRange, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, Loader2, RotateCcw, Send, Sparkles, X } from "lucide-react";
+import { AlertTriangle, CalendarCheck, CalendarRange, Check, CheckCircle2, ChevronLeft, ChevronRight, Clock, History, Loader2, RotateCcw, Send, Sparkles, X } from "lucide-react";
 import { PageHeader } from "@/components/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -39,6 +39,13 @@ interface Proposal {
   entries: { day: number; shift: ShiftCode }[];
 }
 
+interface ChangelogEntry {
+  id: number;
+  publishedByName: string;
+  changes: string;
+  publishedAt: string;
+}
+
 interface PublishedEntry extends ScheduleDraftEntry { id: number; userName: string }
 
 export function GrafikAdminClient() {
@@ -54,6 +61,8 @@ export function GrafikAdminClient() {
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [publishing, setPublishing] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [changelog, setChangelog] = useState<ChangelogEntry[]>([]);
+  const [changelogLoading, setChangelogLoading] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -101,6 +110,15 @@ export function GrafikAdminClient() {
     setSelectedDay(1);
   }
 
+  function loadChangelog() {
+    setChangelogLoading(true);
+    fetch(`/api/schedule/changelog?year=${year}&month=${month}`)
+      .then((r) => r.json())
+      .then((data) => setChangelog(data.entries ?? []))
+      .catch(() => {})
+      .finally(() => setChangelogLoading(false));
+  }
+
   async function setStatus(proposalId: number, status: "approved" | "rejected") {
     setUpdatingId(proposalId);
     const response = await fetch("/api/admin/proposals", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ proposalId, status }) });
@@ -140,10 +158,11 @@ export function GrafikAdminClient() {
     <div className="space-y-4 p-4">
       <MonthNavigation year={year} month={month} submitted={submitted} onChange={changeMonth} />
       <Tabs defaultValue="creator">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="creator" className="text-xs"><Sparkles />Kreator</TabsTrigger>
           <TabsTrigger value="preview" className="text-xs"><CalendarRange />Podgląd</TabsTrigger>
           <TabsTrigger value="proposals" className="text-xs">Propozycje {submitted > 0 && <Badge className="ml-1 h-5 bg-amber-600 px-1.5">{submitted}</Badge>}</TabsTrigger>
+          <TabsTrigger value="changelog" className="text-xs" onClick={loadChangelog}><History />Historia</TabsTrigger>
         </TabsList>
 
         <TabsContent value="creator" className="space-y-4">
@@ -201,6 +220,10 @@ export function GrafikAdminClient() {
 
         <TabsContent value="proposals">
           {loading ? <Loading /> : proposals.length === 0 ? <Empty text="Brak propozycji na wybrany miesiąc" /> : <div className="space-y-3">{proposals.map((proposal) => <ProposalCard key={proposal.id} proposal={proposal} updating={updatingId === proposal.id} onStatus={setStatus} />)}</div>}
+        </TabsContent>
+
+        <TabsContent value="changelog" className="space-y-3">
+          {changelogLoading ? <Loading /> : changelog.length === 0 ? <Empty text="Brak historii publikacji" /> : changelog.map((entry) => <ChangelogCard key={entry.id} entry={entry} />)}
         </TabsContent>
       </Tabs>
     </div>
@@ -269,6 +292,64 @@ function DraftPreview({ year, month, team, entries, issueDays }: { year: number;
 function ProposalCard({ proposal, updating, onStatus }: { proposal: Proposal; updating: boolean; onStatus: (id: number, status: "approved" | "rejected") => void }) {
   const status = STATUS[proposal.status];
   return <Card><CardContent className="space-y-3 p-3"><div className="flex items-start justify-between gap-3"><div><p className="text-sm font-medium">{proposal.userName}</p><p className="text-xs text-muted-foreground">{proposal.userRole === "kierowca" ? "Kierowca" : "Ratownik"}</p></div><Badge className={cn("text-white", status.className)}>{status.label}</Badge></div><div className="flex items-center gap-4 text-xs text-muted-foreground"><span>{proposal.entries.length} zmian</span><span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{proposal.hours} h</span></div><div className="flex flex-wrap gap-1.5">{proposal.entries.map((entry) => <Badge key={`${entry.day}-${entry.shift}`} variant="secondary">{entry.day}: {entry.shift}</Badge>)}</div><div className="grid grid-cols-2 gap-2"><Button size="sm" className="bg-emerald-700 hover:bg-emerald-800" disabled={updating || proposal.status === "approved"} onClick={() => onStatus(proposal.id, "approved")}><Check className="mr-1 h-4 w-4" />Zatwierdź</Button><Button size="sm" variant="outline" disabled={updating || proposal.status === "rejected"} onClick={() => onStatus(proposal.id, "rejected")}><X className="mr-1 h-4 w-4" />Odrzuć</Button></div></CardContent></Card>;
+}
+
+function ChangelogCard({ entry }: { entry: ChangelogEntry }) {
+  const data = JSON.parse(entry.changes) as {
+    added?: { userName: string; date: string; shift: string }[];
+    removed?: { userName: string; date: string; shift: string }[];
+    modified?: { userName: string; date: string; from: string; to: string }[];
+    isFirst?: boolean;
+    totalEntries?: number;
+  };
+  const time = new Date(entry.publishedAt);
+  const dateStr = `${time.getDate().toString().padStart(2, "0")}.${(time.getMonth() + 1).toString().padStart(2, "0")}.${time.getFullYear()}`;
+  const timeStr = `${time.getHours().toString().padStart(2, "0")}:${time.getMinutes().toString().padStart(2, "0")}`;
+  const formatDay = (d: string) => { const day = parseInt(d.slice(8, 10)); return day; };
+
+  return (
+    <Card size="sm">
+      <CardContent className="p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-medium">{entry.publishedByName}</p>
+          <span className="text-xs text-muted-foreground">{dateStr}, {timeStr}</span>
+        </div>
+        {data.isFirst ? (
+          <p className="text-xs text-emerald-400">Pierwsza publikacja — {data.totalEntries} dyżurów</p>
+        ) : (
+          <div className="space-y-1.5">
+            {(data.added?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold text-emerald-400 mb-0.5">+ Dodano ({data.added!.length})</p>
+                <div className="flex flex-wrap gap-1">{data.added!.map((c, i) => (
+                  <Badge key={i} variant="secondary" className="text-[10px] bg-emerald-950/40 text-emerald-300">{c.userName.split(" ")[0]} {formatDay(c.date)}: {c.shift}</Badge>
+                ))}</div>
+              </div>
+            )}
+            {(data.removed?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold text-red-400 mb-0.5">− Usunięto ({data.removed!.length})</p>
+                <div className="flex flex-wrap gap-1">{data.removed!.map((c, i) => (
+                  <Badge key={i} variant="secondary" className="text-[10px] bg-red-950/40 text-red-300">{c.userName.split(" ")[0]} {formatDay(c.date)}: {c.shift}</Badge>
+                ))}</div>
+              </div>
+            )}
+            {(data.modified?.length ?? 0) > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold text-amber-400 mb-0.5">~ Zmieniono ({data.modified!.length})</p>
+                <div className="flex flex-wrap gap-1">{data.modified!.map((c, i) => (
+                  <Badge key={i} variant="secondary" className="text-[10px] bg-amber-950/40 text-amber-300">{c.userName.split(" ")[0]} {formatDay(c.date)}: {c.from} → {c.to}</Badge>
+                ))}</div>
+              </div>
+            )}
+            {(data.added?.length ?? 0) === 0 && (data.removed?.length ?? 0) === 0 && (data.modified?.length ?? 0) === 0 && (
+              <p className="text-xs text-muted-foreground">Ponowna publikacja bez zmian</p>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 }
 
 function Metric({ label, value, alert }: { label: string; value: number; alert?: boolean }) { return <Card size="sm" className="gap-1 p-2 text-center"><span className="text-lg font-semibold tabular-nums">{value}</span><span className={cn("text-[10px] leading-tight text-muted-foreground", alert && "text-amber-500")}>{label}</span></Card>; }

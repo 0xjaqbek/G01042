@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { ChevronLeft, ChevronRight, Loader2, Send, X } from "lucide-react";
+import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const SHIFT_OPTIONS = ["D-K", "D-R", "N-K", "N-R", "DN-K", "DN-R"] as const;
@@ -33,10 +34,14 @@ export function PropozycjeClient({
   userId,
   userName,
   userRole,
+  hoursMin,
+  hoursMax,
 }: {
   userId: string;
   userName: string;
   userRole: string;
+  hoursMin: number;
+  hoursMax: number;
 }) {
   const now = new Date();
   const nextMonthDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -291,8 +296,31 @@ export function PropozycjeClient({
           </div>
           <div className="flex justify-between text-sm mt-1">
             <span className="text-muted-foreground">Godziny łącznie:</span>
-            <span className="font-bold">{totalHours}h</span>
+            <span className={cn(
+              "font-bold",
+              totalHours > hoursMax && "text-red-500",
+              totalHours < hoursMin && "text-amber-500",
+              totalHours >= hoursMin && totalHours <= hoursMax && "text-emerald-500",
+            )}>{totalHours} / {hoursMin}–{hoursMax}h</span>
           </div>
+          {totalHours < hoursMin && (
+            <div className="flex items-center gap-2 mt-2 rounded-md border border-amber-600/50 bg-amber-950/20 px-2.5 py-1.5 text-xs text-amber-400">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              Brakuje {hoursMin - totalHours}h do minimum
+            </div>
+          )}
+          {totalHours > hoursMax && (
+            <div className="flex items-center gap-2 mt-2 rounded-md border border-red-600/50 bg-red-950/20 px-2.5 py-1.5 text-xs text-red-400">
+              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+              Przekroczono maksimum o {totalHours - hoursMax}h
+            </div>
+          )}
+          {totalHours >= hoursMin && totalHours <= hoursMax && selectedDays.length > 0 && (
+            <div className="flex items-center gap-2 mt-2 rounded-md border border-emerald-600/50 bg-emerald-950/20 px-2.5 py-1.5 text-xs text-emerald-400">
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+              Godziny w normie
+            </div>
+          )}
         </Card>
 
         {/* Actions */}

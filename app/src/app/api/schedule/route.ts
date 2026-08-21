@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { scheduleEntries, users } from "@/db/schema";
+import { scheduleChangelogs, scheduleEntries, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import {
@@ -116,6 +116,46 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // Fetch old entries for changelog diff
+  const oldEntries = await db
+    .select({
+      userId: scheduleEntries.userId,
+      userName: users.name,
+      date: scheduleEntries.date,
+      shiftType: scheduleEntries.shiftType,
+      shiftFunction: scheduleEntries.shiftFunction,
+    })
+    .from(scheduleEntries)
+    .innerJoin(users, eq(scheduleEntries.userId, users.id))
+    .where(and(eq(scheduleEntries.year, year), eq(scheduleEntries.month, month)));
+
+  // Build lookup maps for diff
+  const oldMap = new Map(oldEntries.map((e) => [`${e.userId}:${e.date}`, e]));
+  const newMap = new Map(normalizedEntries.map((e) => [`${e.userId}:${e.date}`, e]));
+  const nameMap = new Map(team.map((m) => [m.id, m.name]));
+
+  const added: { userId: number; userName: string; date: string; shift: string }[] = [];
+  const removed: { userId: number; userName: string; date: string; shift: string }[] = [];
+  const modified: { userId: number; userName: string; date: string; from: string; to: string }[] = [];
+
+  for (const [key, entry] of newMap) {
+    const old = oldMap.get(key);
+    const shift = `${entry.shiftType}-${entry.shiftFunction}`;
+    if (!old) {
+      added.push({ userId: entry.userId, userName: nameMap.get(entry.userId) ?? "?", date: entry.date, shift });
+    } else {
+      const oldShift = `${old.shiftType}-${old.shiftFunction}`;
+      if (oldShift !== shift) {
+        modified.push({ userId: entry.userId, userName: nameMap.get(entry.userId) ?? "?", date: entry.date, from: oldShift, to: shift });
+      }
+    }
+  }
+  for (const [key, entry] of oldMap) {
+    if (!newMap.has(key)) {
+      removed.push({ userId: entry.userId, userName: entry.userName, date: entry.date, shift: `${entry.shiftType}-${entry.shiftFunction}` });
+    }
+  }
+
   // Delete existing entries for this month
   await db
     .delete(scheduleEntries)
@@ -135,6 +175,22 @@ export async function POST(request: NextRequest) {
         year,
       }))
     );
+  }
+
+  // Save changelog entry
+  if (added.length > 0 || removed.length > 0 || modified.length > 0 || oldEntries.length === 0) {
+    await db.insert(scheduleChangelogs).values({
+      publishedBy: Number(session.user.id),
+      month,
+      year,
+      changes: JSON.stringify({
+        added,
+        removed,
+        modified,
+        isFirst: oldEntries.length === 0,
+        totalEntries: normalizedEntries.length,
+      }),
+    });
   }
 
   return NextResponse.json({ success: true });

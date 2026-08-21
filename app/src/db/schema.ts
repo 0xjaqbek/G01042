@@ -205,6 +205,18 @@ export const announcementAcks = pgTable("announcement_acks", {
   ackedAt: timestamp("acked_at").defaultNow().notNull(),
 });
 
+// ─── Schedule Changelog ───
+export const scheduleChangelogs = pgTable("schedule_changelogs", {
+  id: serial("id").primaryKey(),
+  publishedBy: integer("published_by")
+    .references(() => users.id)
+    .notNull(),
+  month: integer("month").notNull(),
+  year: integer("year").notNull(),
+  changes: text("changes").notNull(), // JSON: { added, removed, modified }
+  publishedAt: timestamp("published_at").defaultNow().notNull(),
+});
+
 // ─── Vehicle Incident Reports ───
 export const vehicleIncidents = pgTable("vehicle_incidents", {
   id: serial("id").primaryKey(),

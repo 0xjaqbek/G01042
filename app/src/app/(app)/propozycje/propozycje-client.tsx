@@ -4,15 +4,8 @@ import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/page-header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { ChevronLeft, ChevronRight, Loader2, Send, Trash2 } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { ChevronLeft, ChevronRight, Loader2, Send, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const SHIFT_OPTIONS = ["D-K", "D-R", "N-K", "N-R", "DN-K", "DN-R"] as const;
@@ -53,10 +46,11 @@ export function PropozycjeClient({
   const [status, setStatus] = useState<string>("draft");
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [pickerDay, setPickerDay] = useState<number | null>(null);
 
   const daysInMonth = new Date(year, month, 0).getDate();
-  const defaultShift = userRole === "kierowca" ? "DN-K" : "DN-R";
   const isFirstAllowedMonth = year === nextMonthDate.getFullYear() && month === nextMonthDate.getMonth() + 1;
+  const isLocked = status === "submitted" || status === "approved";
 
   useEffect(() => {
     fetch(`/api/proposals?userId=${userId}&year=${year}&month=${month}`)
@@ -73,19 +67,24 @@ export function PropozycjeClient({
       .catch(() => {});
   }, [userId, year, month]);
 
-  function toggleDay(day: number) {
-    if (status === "submitted" || status === "approved") return;
-    setSelectedDays((prev) => {
-      const exists = prev.find((d) => d.day === day);
-      if (exists) return prev.filter((d) => d.day !== day);
-      return [...prev, { day, shift: defaultShift }];
-    });
+  function handleDayTap(day: number) {
+    if (isLocked) return;
+    setPickerDay(day);
   }
 
-  function changeShift(day: number, shift: string) {
-    setSelectedDays((prev) =>
-      prev.map((d) => (d.day === day ? { ...d, shift } : d))
-    );
+  function pickShift(shift: string) {
+    if (pickerDay === null) return;
+    setSelectedDays((prev) => {
+      const exists = prev.find((d) => d.day === pickerDay);
+      if (exists) return prev.map((d) => d.day === pickerDay ? { ...d, shift } : d);
+      return [...prev, { day: pickerDay, shift }];
+    });
+    setPickerDay(null);
+  }
+
+  function removeDay(day: number) {
+    setSelectedDays((prev) => prev.filter((d) => d.day !== day));
+    setPickerDay(null);
   }
 
   const totalHours = selectedDays.reduce((sum, d) => {
@@ -208,16 +207,16 @@ export function PropozycjeClient({
             return (
               <button
                 key={day}
-                onClick={() => toggleDay(day)}
-                disabled={status === "submitted" || status === "approved"}
+                onClick={() => handleDayTap(day)}
+                disabled={isLocked}
                 className={cn(
                   "relative flex flex-col items-center justify-center rounded-lg p-1.5 text-sm transition-colors min-h-[52px]",
                   selected
                     ? cn(SHIFT_COLORS[selected.shift] || "bg-red-600", "text-white")
                     : "bg-card hover:bg-accent active:bg-accent/80",
                   isWeekend && !selected && "text-red-400",
-                  (status === "submitted" || status === "approved") &&
-                    "opacity-75 cursor-not-allowed"
+                  pickerDay === day && !selected && "ring-2 ring-primary",
+                  isLocked && "opacity-75 cursor-not-allowed"
                 )}
               >
                 <span className="font-medium">{day}</span>
@@ -231,49 +230,57 @@ export function PropozycjeClient({
           })}
         </div>
 
-        {/* Shift type selector for selected days */}
-        {selectedDays.length > 0 && status === "draft" && (
-          <Card className="border-transparent">
-            <CardHeader className="px-4 pb-2 pt-4">
-              <CardTitle className="text-sm">Wybrane dyżury</CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 pb-4 pt-0 space-y-2">
-              {selectedDays
-                .sort((a, b) => a.day - b.day)
-                .map((d) => (
-                  <div
-                    key={d.day}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-border/50 p-2"
-                  >
-                    <span className="text-sm font-semibold w-8 text-center">{d.day}</span>
-                    <Select
-                      value={d.shift}
-                      onValueChange={(v) => changeShift(d.day, v ?? defaultShift)}
+        {/* Shift picker overlay */}
+        {pickerDay !== null && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+            onClick={() => setPickerDay(null)}
+          >
+            <div
+              className="w-[280px] rounded-2xl border border-border bg-card p-4 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-semibold">
+                  {pickerDay} {MONTH_NAMES[month - 1]}
+                </p>
+                <button
+                  onClick={() => setPickerDay(null)}
+                  className="flex h-7 w-7 items-center justify-center rounded-full hover:bg-accent transition-colors"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                {SHIFT_OPTIONS.map((opt) => {
+                  const current = selectedDays.find((d) => d.day === pickerDay);
+                  const isActive = current?.shift === opt;
+                  return (
+                    <button
+                      key={opt}
+                      onClick={() => pickShift(opt)}
+                      className={cn(
+                        "flex items-center justify-center rounded-xl py-3 text-sm font-bold transition-all",
+                        isActive
+                          ? cn(SHIFT_COLORS[opt], "text-white scale-105")
+                          : cn(SHIFT_COLORS[opt], "text-white opacity-60 hover:opacity-90")
+                      )}
                     >
-                      <SelectTrigger className="h-9 w-24 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {SHIFT_OPTIONS.map((opt) => (
-                          <SelectItem key={opt} value={opt} className="text-xs">
-                            {opt}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9"
-                      onClick={() => toggleDay(d.day)}
-                      aria-label={`Usuń dzień ${d.day}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-            </CardContent>
-          </Card>
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedDays.find((d) => d.day === pickerDay) && (
+                <button
+                  onClick={() => removeDay(pickerDay)}
+                  className="mt-3 w-full rounded-xl border border-border py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent transition-colors"
+                >
+                  Usuń dzień
+                </button>
+              )}
+            </div>
+          </div>
         )}
 
         {/* Summary */}

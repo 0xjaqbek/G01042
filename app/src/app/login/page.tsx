@@ -10,9 +10,6 @@ import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   Dialog,
@@ -54,25 +51,22 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-start overflow-y-auto p-4 py-6 sm:justify-center">
-      <Card className="w-full max-w-sm border-border/50">
-        <CardHeader className="items-center pb-2 pt-8 text-center">
-          <Image
-            src="/icons/login-logo.png"
-            alt="G01042 Przywidz"
-            width={64}
-            height={64}
-            priority
-            className="mb-4 rounded-2xl"
-          />
-          <CardTitle className="text-2xl font-bold tracking-tight">
-            G01042
-          </CardTitle>
-          <CardDescription className="text-sm">
-            Zespół ratownictwa medycznego Przywidz
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pb-8">
+    <div className="flex min-h-dvh flex-col items-center justify-center p-4 gap-4">
+      <div className="flex flex-col items-center gap-2">
+        <Image
+          src="/icons/login-logo.png"
+          alt="G01042 Przywidz"
+          width={72}
+          height={72}
+          priority
+        />
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground">Zespół ratownictwa medycznego</p>
+          <p className="text-sm font-semibold">Przywidz G01042</p>
+        </div>
+      </div>
+      <Card className="w-full max-w-sm border-border/50 h-fit">
+        <CardContent className="pt-6 pb-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="name">Imię i nazwisko</Label>
@@ -124,7 +118,7 @@ export default function LoginPage() {
           </form>
         </CardContent>
       </Card>
-      <footer className="mt-6 flex w-full max-w-sm flex-col items-center gap-2 text-center text-xs text-muted-foreground">
+      <footer className="flex w-full max-w-sm flex-col items-center gap-2 text-center text-xs text-muted-foreground">
         <p>
           <span className="font-medium text-foreground">v0.1</span>
           <span className="mx-2 text-border">|</span>

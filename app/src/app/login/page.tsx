@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -13,7 +14,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Info, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const [name, setName] = useState("");
@@ -43,23 +54,17 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center p-4">
+    <div className="flex min-h-dvh flex-col items-center justify-start overflow-y-auto p-4 py-6 sm:justify-center">
       <Card className="w-full max-w-sm border-border/50">
         <CardHeader className="items-center pb-2 pt-8 text-center">
-          {/* SVG ambulance cross logo */}
-          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-primary">
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              className="h-8 w-8 text-primary-foreground"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M11 2h2v8h8v2h-8v8h-2v-8H3v-2h8z" fill="currentColor" stroke="none" />
-            </svg>
-          </div>
+          <Image
+            src="/icons/login-logo.png"
+            alt="G01042 Przywidz"
+            width={64}
+            height={64}
+            priority
+            className="mb-4 rounded-2xl"
+          />
           <CardTitle className="text-2xl font-bold tracking-tight">
             G01042
           </CardTitle>
@@ -119,6 +124,53 @@ export default function LoginPage() {
           </form>
         </CardContent>
       </Card>
+      <footer className="mt-6 flex w-full max-w-sm flex-col items-center gap-2 text-center text-xs text-muted-foreground">
+        <p>
+          <span className="font-medium text-foreground">v0.1</span>
+          <span className="mx-2 text-border">|</span>
+          by Jaqbek
+        </p>
+        <Dialog>
+          <DialogTrigger render={<Button variant="ghost" size="sm" />}>
+            <Info className="h-4 w-4" />
+            Info
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Informacje o aplikacji</DialogTitle>
+              <DialogDescription>
+                G01042 to narzędzie wspierające codzienną pracę zespołu ratownictwa
+                medycznego w Przywidzu.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 text-sm">
+              <section className="space-y-2">
+                <h3 className="font-medium">Aplikacja</h3>
+                <p className="text-muted-foreground">
+                  Panel umożliwia szybki dostęp do grafiku, checklist,
+                  zgłoszeń, propozycji oraz modułów administracyjnych zespołu.
+                </p>
+              </section>
+              <section className="space-y-2">
+                <h3 className="font-medium">Changelog</h3>
+                <div className="rounded-lg border bg-muted/40 p-3">
+                  <p className="font-medium">v0.1</p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-muted-foreground">
+                    <li>Pierwsza wersja ekranu logowania i panelu G01042.</li>
+                    <li>Dodane moduły pracy zespołu oraz widoki administracyjne.</li>
+                    <li>Dodana stopka z informacjami o wersji aplikacji.</li>
+                  </ul>
+                </div>
+              </section>
+            </div>
+            <DialogFooter>
+              <DialogClose render={<Button variant="outline" />}>
+                Zamknij
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </footer>
     </div>
   );
 }

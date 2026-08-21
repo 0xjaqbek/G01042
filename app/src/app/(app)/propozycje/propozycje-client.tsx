@@ -149,6 +149,9 @@ export function PropozycjeClient({
             <ChevronLeft className="h-5 w-5" />
           </Button>
           <div className="text-center">
+            {isFirstAllowedMonth && (
+              <span className="text-[11px] font-medium text-primary">Propozycje na:</span>
+            )}
             <h2 className="text-lg font-semibold">
               {MONTH_NAMES[month - 1]} {year}
             </h2>

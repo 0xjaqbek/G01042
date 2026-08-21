@@ -112,8 +112,6 @@ export function DashboardClient({ user }: DashboardProps) {
   const normalUnacked = announcements.filter(
     (a) => a.priority === "normal" && !a.acked
   );
-  // All normal (for display — show acked ones too)
-  const normalAll = announcements.filter((a) => a.priority === "normal");
 
   return (
     <>
@@ -123,7 +121,7 @@ export function DashboardClient({ user }: DashboardProps) {
       />
       <div className="p-4 space-y-3">
         {/* Announcements card — only when there are normal announcements */}
-        {normalAll.length > 0 && (
+        {normalUnacked.length > 0 && (
           <Card className="border-sky-800/30 bg-sky-950/15">
             <CardHeader className="flex-row items-center gap-3 px-4 pb-2 pt-4">
               <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-500/15">
@@ -139,18 +137,13 @@ export function DashboardClient({ user }: DashboardProps) {
               </CardTitle>
             </CardHeader>
             <CardContent className="px-4 pb-4 pt-0 space-y-2">
-              {normalAll.map((a) => (
+              {normalUnacked.map((a) => (
                 <div
                   key={a.id}
-                  className={cn(
-                    "flex items-center gap-3 rounded-lg border p-3",
-                    a.acked
-                      ? "border-border/30 opacity-60"
-                      : "border-sky-700/40 bg-sky-950/20"
-                  )}
+                  className="flex items-center gap-3 rounded-lg border border-sky-700/40 bg-sky-950/20 p-3"
                 >
                   <div className="min-w-0 flex-1">
-                    <p className={cn("text-sm font-medium", a.acked && "text-muted-foreground")}>
+                    <p className="text-sm font-medium">
                       {a.title}
                     </p>
                     {a.body && (
@@ -162,18 +155,14 @@ export function DashboardClient({ user }: DashboardProps) {
                       {a.authorName} · {new Date(a.createdAt).toLocaleDateString("pl")}
                     </p>
                   </div>
-                  {a.acked ? (
-                    <Check className="h-4 w-4 shrink-0 text-emerald-500" />
-                  ) : (
-                    <Button
-                      size="sm"
-                      className="h-8 shrink-0 text-xs"
-                      onClick={() => acknowledge(a.id)}
-                    >
-                      <Check className="mr-1 h-3 w-3" />
-                      Przyjmuję
-                    </Button>
-                  )}
+                  <Button
+                    size="sm"
+                    className="h-8 shrink-0 text-xs"
+                    onClick={() => acknowledge(a.id)}
+                  >
+                    <Check className="mr-1 h-3 w-3" />
+                    Przyjmuję
+                  </Button>
                 </div>
               ))}
             </CardContent>

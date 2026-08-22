@@ -120,7 +120,7 @@ export default function LoginPage() {
       </Card>
       <footer className="flex w-full max-w-sm flex-col items-center gap-2 text-center text-xs text-muted-foreground">
         <p>
-          <span className="font-medium text-foreground">v0.1</span>
+          <span className="font-medium text-foreground">v0.2</span>
           <span className="mx-2 text-border">|</span>
           by Jaqbek
         </p>

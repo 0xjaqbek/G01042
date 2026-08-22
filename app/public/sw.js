@@ -1,4 +1,5 @@
-const CACHE_NAME = "g01042-static-v1";
+const APP_VERSION = "0.2.0";
+const CACHE_NAME = "g01042-v" + APP_VERSION;
 const PRECACHE_URLS = [
   "/manifest.json",
   "/icons/icon-192.png",
@@ -24,6 +25,15 @@ self.addEventListener("activate", (event) => {
       )
       .then(() => self.clients.claim())
   );
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data === "GET_VERSION") {
+    event.source.postMessage({ type: "VERSION", version: APP_VERSION });
+  }
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("fetch", (event) => {

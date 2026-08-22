@@ -82,3 +82,42 @@ export function analyzeProposalDemand(
 
   return demands;
 }
+
+// ─── Fairness Statistics ───
+
+export function getFairnessStats(
+  team: TeamMember[],
+  entries: ScheduleDraftEntry[]
+): MemberFairness[] {
+  return team.map((member) => {
+    const own = entries.filter((e) => e.userId === member.id);
+    const hours = getMemberHours(entries, member.id);
+    const shiftCount = own.length;
+    const nightCount = own.filter(
+      (e) => e.shiftType === "N" || e.shiftType === "DN"
+    ).length;
+    const dnCount = own.filter((e) => e.shiftType === "DN").length;
+    const weekendCount = own.filter((e) => {
+      const dow = new Date(`${e.date}T12:00:00Z`).getUTCDay();
+      return dow === 0 || dow === 6;
+    }).length;
+
+    const minH = member.minHours ?? 120;
+    const maxH = member.maxHours ?? 240;
+
+    return {
+      id: member.id,
+      name: member.name,
+      hours,
+      minHours: minH,
+      maxHours: maxH,
+      shiftCount,
+      nightCount,
+      weekendCount,
+      dnCount,
+      loadRatio: minH > 0 ? hours / minH : 0,
+      nightShare: shiftCount > 0 ? nightCount / shiftCount : 0,
+      weekendShare: shiftCount > 0 ? weekendCount / shiftCount : 0,
+    };
+  });
+}

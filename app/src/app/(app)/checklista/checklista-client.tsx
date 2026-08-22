@@ -141,12 +141,14 @@ export function ChecklistaClient({ userId, shiftFunction }: { userId: string; sh
               </CardHeader>
               <CardContent className="px-4 pb-4 pt-0 space-y-2">
                 {category.items.map((item) => (
-                  <button
-                    type="button"
+                  <div
                     key={item.id}
+                    role="button"
+                    tabIndex={0}
                     onClick={() => toggleItem(category.id, item.id)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); toggleItem(category.id, item.id); } }}
                     className={cn(
-                      "w-full rounded-lg border p-3 text-left transition-colors",
+                      "w-full rounded-lg border p-3 text-left transition-colors cursor-pointer select-none",
                       item.checked
                         ? "border-emerald-800/50 bg-emerald-950/20"
                         : "border-border/50 active:bg-accent/60"
@@ -179,7 +181,7 @@ export function ChecklistaClient({ userId, shiftFunction }: { userId: string; sh
                         )}
                       </div>
                     </div>
-                  </button>
+                  </div>
                 ))}
               </CardContent>
             </Card>

@@ -155,10 +155,7 @@ export function ChecklistaClient({ userId, shiftFunction }: { userId: string; sh
                     <div className="flex items-start gap-3">
                       <Checkbox
                         checked={item.checked}
-                        onCheckedChange={() =>
-                          toggleItem(category.id, item.id)
-                        }
-                        className="mt-0.5"
+                        className="mt-0.5 pointer-events-none"
                         tabIndex={-1}
                       />
                       <div className="flex-1 min-w-0">

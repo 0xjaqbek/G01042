@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -19,9 +20,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
-import { Plus, KeyRound, Shield } from "lucide-react";
+import { Plus, ChevronRight, Shield, Loader2 } from "lucide-react";
 
 interface User {
   id: number;
@@ -29,6 +29,8 @@ interface User {
   role: string;
   isLeader: boolean;
   isActive: boolean;
+  minHours: number;
+  maxHours: number;
 }
 
 const ROLE_LABEL: Record<string, string> = {
@@ -40,12 +42,8 @@ const ROLE_LABEL: Record<string, string> = {
 export function ZespolClient() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // New user form
-  const [newName, setNewName] = useState("");
-  const [newRole, setNewRole] = useState("ratownik");
-  const [newPin, setNewPin] = useState("1234");
-  const [adding, setAdding] = useState(false);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/users")
@@ -57,118 +55,44 @@ export function ZespolClient() {
       .catch(() => setLoading(false));
   }, []);
 
-  async function addUser() {
-    if (!newName) return;
-    setAdding(true);
-    const res = await fetch("/api/admin/users", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newName, role: newRole, pin: newPin }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      setUsers([...users, data.user]);
-      setNewName("");
-      setNewPin("1234");
-    }
-    setAdding(false);
+  function openAdd() {
+    setEditingUser(null);
+    setDialogOpen(true);
   }
 
-  async function setPin(userId: number, pin: string) {
-    if (!/^\d{4,6}$/.test(pin)) {
-      alert("PIN musi mieć 4-6 cyfr");
-      return;
-    }
-    const res = await fetch("/api/admin/users", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, action: "setPin", pin }),
-    });
-    if (res.ok) {
-      alert("PIN ustawiony");
-    }
+  function openEdit(user: User) {
+    setEditingUser(user);
+    setDialogOpen(true);
   }
 
-  async function changeRole(userId: number, role: string) {
-    const res = await fetch("/api/admin/users", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, action: "setRole", role }),
-    });
-    if (res.ok) {
-      setUsers(users.map((u) => (u.id === userId ? { ...u, role } : u)));
+  function handleSaved(user: User, isNew: boolean) {
+    if (isNew) {
+      setUsers((prev) => [...prev, user]);
+    } else {
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? user : u)));
     }
-  }
-
-  async function toggleActive(userId: number, isActive: boolean) {
-    await fetch("/api/admin/users", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, action: "toggleActive", isActive }),
-    });
-    setUsers(
-      users.map((u) => (u.id === userId ? { ...u, isActive } : u))
-    );
+    setDialogOpen(false);
   }
 
   return (
     <>
       <PageHeader title="Zespół" description="Zarządzanie członkami G01042" />
-      <div className="p-4 space-y-4">
-        {/* Add new member */}
-        <Card className="p-3">
-          <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
-            <Plus className="h-4 w-4" /> Dodaj członka
-          </h3>
-          <div className="space-y-2">
-            <Input
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="Nazwisko Imię"
-              className="h-9"
-            />
-            <div className="flex gap-2">
-              <Select value={newRole} onValueChange={(v) => setNewRole(v ?? "ratownik")}>
-                <SelectTrigger className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="kierowca">Kierowca</SelectItem>
-                  <SelectItem value="ratownik">Ratownik</SelectItem>
-                  <SelectItem value="oba">Kierowca + Ratownik</SelectItem>
-                </SelectContent>
-              </Select>
-              <Input
-                value={newPin}
-                onChange={(e) => setNewPin(e.target.value)}
-                placeholder="PIN"
-                className="h-9 w-24"
-                maxLength={6}
-              />
-            </div>
-            <Button
-              onClick={addUser}
-              disabled={!newName || adding}
-              className="w-full bg-red-600 hover:bg-red-700"
-            >
-              {adding ? "Dodawanie..." : "Dodaj"}
-            </Button>
-          </div>
-        </Card>
-
-        {/* Team list */}
+      <div className="p-4 space-y-2">
         {loading ? (
-          <div className="flex justify-center py-8">
-            <div className="h-8 w-8 animate-spin rounded-full border-2 border-red-500 border-t-transparent" />
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="space-y-2">
+          <>
             {users.map((user) => (
               <Card
                 key={user.id}
                 className={!user.isActive ? "opacity-50" : ""}
               >
-                <CardContent className="flex items-center justify-between p-3">
+                <CardContent
+                  className="flex items-center justify-between p-3 cursor-pointer hover:bg-accent/50 transition-colors"
+                  onClick={() => openEdit(user)}
+                >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">{user.name}</span>
@@ -176,65 +100,257 @@ export function ZespolClient() {
                         <Shield className="h-3.5 w-3.5 text-red-400" />
                       )}
                     </div>
-                    <Badge variant="secondary" className="text-xs mt-1">
-                      {ROLE_LABEL[user.role] ?? user.role}
-                    </Badge>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="secondary" className="text-xs">
+                        {ROLE_LABEL[user.role] ?? user.role}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground">
+                        {user.minHours}–{user.maxHours}h
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Select value={user.role} onValueChange={(v) => v && changeRole(user.id, v)}>
-                      <SelectTrigger className="h-8 w-24 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="kierowca">Kierowca</SelectItem>
-                        <SelectItem value="ratownik">Ratownik</SelectItem>
-                        <SelectItem value="oba">K + R</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Dialog>
-                      <DialogTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" title="Ustaw PIN" />}>
-                        <KeyRound className="h-4 w-4" />
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>Ustaw PIN — {user.name}</DialogTitle>
-                        </DialogHeader>
-                        <PinForm userId={user.id} onSave={setPin} />
-                      </DialogContent>
-                    </Dialog>
-                    <Switch
-                      checked={user.isActive}
-                      onCheckedChange={(v) => toggleActive(user.id, v)}
-                    />
-                  </div>
+                  <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60" />
                 </CardContent>
               </Card>
             ))}
-          </div>
+            <Button
+              onClick={openAdd}
+              className="w-full bg-red-600 hover:bg-red-700"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Dodaj pracownika
+            </Button>
+          </>
         )}
       </div>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {editingUser ? editingUser.name : "Nowy pracownik"}
+            </DialogTitle>
+          </DialogHeader>
+          <UserForm
+            user={editingUser}
+            onSaved={handleSaved}
+            onCancel={() => setDialogOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
 
-function PinForm({ userId, onSave }: { userId: number; onSave: (userId: number, pin: string) => void }) {
-  const [pin, setLocalPin] = useState("");
+function UserForm({
+  user,
+  onSaved,
+  onCancel,
+}: {
+  user: User | null;
+  onSaved: (user: User, isNew: boolean) => void;
+  onCancel: () => void;
+}) {
+  const isNew = !user;
+  const [name, setName] = useState(user?.name ?? "");
+  const [role, setRole] = useState(user?.role ?? "ratownik");
+  const [minHours, setMinHours] = useState(String(user?.minHours ?? 120));
+  const [maxHours, setMaxHours] = useState(String(user?.maxHours ?? 240));
+  const [pin, setPin] = useState("");
+  const [isActive, setIsActive] = useState(user?.isActive ?? true);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState("");
+
+  async function handleSave() {
+    setSaving(true);
+    setMessage("");
+
+    if (isNew) {
+      if (!name.trim()) {
+        setMessage("Podaj imię i nazwisko");
+        setSaving(false);
+        return;
+      }
+      const res = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          role,
+          pin: pin || "1234",
+          minHours: Number(minHours),
+          maxHours: Number(maxHours),
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        onSaved(data.user, true);
+      } else {
+        setMessage("Błąd przy tworzeniu pracownika");
+      }
+    } else {
+      const patches: Promise<Response>[] = [];
+
+      if (role !== user.role) {
+        patches.push(
+          fetch("/api/admin/users", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: user.id, action: "setRole", role }),
+          })
+        );
+      }
+
+      if (
+        Number(minHours) !== user.minHours ||
+        Number(maxHours) !== user.maxHours
+      ) {
+        patches.push(
+          fetch("/api/admin/users", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: user.id,
+              action: "setLimits",
+              minHours: Number(minHours),
+              maxHours: Number(maxHours),
+            }),
+          })
+        );
+      }
+
+      if (isActive !== user.isActive) {
+        patches.push(
+          fetch("/api/admin/users", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: user.id,
+              action: "toggleActive",
+              isActive,
+            }),
+          })
+        );
+      }
+
+      if (pin.length >= 4) {
+        patches.push(
+          fetch("/api/admin/users", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: user.id,
+              action: "setPin",
+              pin,
+            }),
+          })
+        );
+      }
+
+      await Promise.all(patches);
+      onSaved(
+        {
+          ...user,
+          role,
+          minHours: Number(minHours),
+          maxHours: Number(maxHours),
+          isActive,
+        },
+        false
+      );
+    }
+    setSaving(false);
+  }
+
   return (
-    <div className="space-y-3">
-      <Input
-        value={pin}
-        onChange={(e) => setLocalPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-        placeholder="Nowy PIN (4-6 cyfr)"
-        maxLength={6}
-        inputMode="numeric"
-      />
-      <Button
-        onClick={() => { onSave(userId, pin); setLocalPin(""); }}
-        disabled={pin.length < 4}
-        className="w-full"
-      >
-        Zapisz PIN
-      </Button>
+    <div className="space-y-4">
+      {isNew && (
+        <div className="space-y-1.5">
+          <Label>Imię i nazwisko</Label>
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Nazwisko Imię"
+          />
+        </div>
+      )}
+
+      <div className="space-y-1.5">
+        <Label>Funkcja</Label>
+        <Select value={role} onValueChange={(v) => v && setRole(v)}>
+          <SelectTrigger>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="kierowca">Kierowca</SelectItem>
+            <SelectItem value="ratownik">Ratownik</SelectItem>
+            <SelectItem value="oba">Kierowca + Ratownik</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label>Min. godzin</Label>
+          <Input
+            type="number"
+            value={minHours}
+            onChange={(e) => setMinHours(e.target.value)}
+            min={0}
+            step={12}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Max. godzin</Label>
+          <Input
+            type="number"
+            value={maxHours}
+            onChange={(e) => setMaxHours(e.target.value)}
+            min={0}
+            step={12}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label>{isNew ? "PIN" : "Nowy PIN (zostaw puste aby nie zmieniać)"}</Label>
+        <Input
+          value={pin}
+          onChange={(e) =>
+            setPin(e.target.value.replace(/\D/g, "").slice(0, 6))
+          }
+          placeholder={isNew ? "1234" : "••••"}
+          maxLength={6}
+          inputMode="numeric"
+        />
+      </div>
+
+      {!isNew && (
+        <div className="flex items-center justify-between">
+          <Label>Aktywny</Label>
+          <Switch checked={isActive} onCheckedChange={setIsActive} />
+        </div>
+      )}
+
+      {message && (
+        <p className="text-sm text-red-500">{message}</p>
+      )}
+
+      <div className="flex gap-2">
+        <Button variant="secondary" className="flex-1" onClick={onCancel}>
+          Anuluj
+        </Button>
+        <Button
+          className="flex-1"
+          onClick={handleSave}
+          disabled={saving}
+        >
+          {saving ? (
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          ) : null}
+          {isNew ? "Dodaj" : "Zapisz"}
+        </Button>
+      </div>
     </div>
   );
 }

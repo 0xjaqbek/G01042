@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { SHIFT_CODES, formatDate, getAllowedShiftCodes, getCoverage, getCoverageIssueDates, getHoursLimit, getMemberHours, getRestConflicts, splitShiftCode, toShiftCode, type ScheduleDraftEntry, type ShiftCode, type ShiftFunction, type ShiftType, type TeamMember } from "@/lib/schedule-rules";
+import { SHIFT_CODES, formatDate, getAllowedShiftCodes, getCoverage, getCoverageIssueDates, getMemberHours, getRestConflicts, splitShiftCode, toShiftCode, type ScheduleDraftEntry, type ShiftCode, type ShiftFunction, type ShiftType, type TeamMember } from "@/lib/schedule-rules";
 
 const MONTHS = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
 const DAYS = ["Nd", "Pn", "Wt", "Śr", "Cz", "Pt", "Sb"];
@@ -87,8 +87,9 @@ export function GrafikAdminClient() {
   const approvedProposals = proposals.filter((proposal) => proposal.status === "approved");
   const coverageIssueDays = useMemo(() => getCoverageIssueDates(draft, year, month), [draft, year, month]);
   const restConflicts = useMemo(() => getRestConflicts(draft), [draft]);
-  const overLimit = team.filter((member) => getMemberHours(draft, member.id) > getHoursLimit(member.name).max);
-  const canPublish = draft.length > 0 && coverageIssueDays.length === 0 && restConflicts.length === 0 && overLimit.length === 0;
+  const overLimit = team.filter((member) => getMemberHours(draft, member.id) > ((member as any).maxHours ?? 240));
+  const underLimit = team.filter((member) => getMemberHours(draft, member.id) < ((member as any).minHours ?? 120));
+  const canPublish = draft.length > 0 && coverageIssueDays.length === 0 && restConflicts.length === 0 && overLimit.length === 0 && underLimit.length === 0;
   const submitted = proposals.filter((proposal) => proposal.status === "submitted").length;
   const selectedDate = formatDate(year, month, selectedDay);
   const coverage = getCoverage(draft, selectedDate);
@@ -253,7 +254,7 @@ function CoverageStatus({ label, count }: { label: string; count: number }) {
 }
 
 function HoursSummary({ team, entries, conflicts }: { team: TeamMember[]; entries: ScheduleDraftEntry[]; conflicts: ReturnType<typeof getRestConflicts> }) {
-  return <Card size="sm"><CardHeader><CardTitle>Godziny zespołu</CardTitle></CardHeader><CardContent className="space-y-2">{team.map((member) => { const hours = getMemberHours(entries, member.id); const limit = getHoursLimit(member.name); const hasConflict = conflicts.some((conflict) => conflict.userId === member.id); const state = hours > limit.max ? "over" : hours < limit.min ? "under" : "ok"; return <div key={member.id} className="flex items-center gap-2 text-xs"><span className="min-w-0 flex-1 truncate">{member.name}</span>{hasConflict && <Badge className="bg-red-700">36 h</Badge>}<span className={cn("font-semibold tabular-nums", state === "over" && "text-red-500", state === "under" && "text-amber-500", state === "ok" && "text-emerald-500")}>{hours} / {limit.min}-{limit.max} h</span></div>; })}</CardContent></Card>;
+  return <Card size="sm"><CardHeader><CardTitle>Godziny zespołu</CardTitle></CardHeader><CardContent className="space-y-2">{team.map((member) => { const hours = getMemberHours(entries, member.id); const min = member.minHours ?? 120; const max = member.maxHours ?? 240; const hasConflict = conflicts.some((conflict) => conflict.userId === member.id); const state = hours > max ? "over" : hours < min ? "under" : "ok"; return <div key={member.id} className="flex items-center gap-2 text-xs"><span className="min-w-0 flex-1 truncate">{member.name}</span>{hasConflict && <Badge className="bg-red-700">36 h</Badge>}<span className={cn("font-semibold tabular-nums", state === "over" && "text-red-500", state === "under" && "text-amber-500", state === "ok" && "text-emerald-500")}>{hours} / {min}-{max} h</span></div>; })}</CardContent></Card>;
 }
 
 function DraftPreview({ year, month, team, entries, issueDays }: { year: number; month: number; team: TeamMember[]; entries: ScheduleDraftEntry[]; issueDays: number[] }) {

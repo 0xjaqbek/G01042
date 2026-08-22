@@ -18,6 +18,8 @@ export async function GET() {
       role: users.role,
       isLeader: users.isLeader,
       isActive: users.isActive,
+      minHours: users.minHours,
+      maxHours: users.maxHours,
     })
     .from(users);
 
@@ -31,7 +33,7 @@ export async function POST(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { name, role, pin } = body;
+  const { name, role, pin, minHours, maxHours } = body;
 
   const hashedPin = await hash(pin || "1234", 10);
 
@@ -42,6 +44,8 @@ export async function POST(request: NextRequest) {
       pin: hashedPin,
       role: role as "kierowca" | "ratownik" | "oba",
       isLeader: false,
+      minHours: Number.isInteger(Number(minHours)) ? Number(minHours) : 120,
+      maxHours: Number.isInteger(Number(maxHours)) ? Number(maxHours) : 240,
     })
     .returning({
       id: users.id,
@@ -49,6 +53,8 @@ export async function POST(request: NextRequest) {
       role: users.role,
       isLeader: users.isLeader,
       isActive: users.isActive,
+      minHours: users.minHours,
+      maxHours: users.maxHours,
     });
 
   return NextResponse.json({ user });
@@ -82,6 +88,13 @@ export async function PATCH(request: NextRequest) {
       .update(users)
       .set({ isActive: Boolean(isActive) })
       .where(eq(users.id, userId));
+  } else if (action === "setLimits") {
+    const min = Number(body.minHours);
+    const max = Number(body.maxHours);
+    if (!Number.isInteger(min) || !Number.isInteger(max) || min < 0 || max < min) {
+      return NextResponse.json({ error: "Nieprawidłowe limity godzin" }, { status: 400 });
+    }
+    await db.update(users).set({ minHours: min, maxHours: max }).where(eq(users.id, userId));
   }
 
   return NextResponse.json({ success: true });

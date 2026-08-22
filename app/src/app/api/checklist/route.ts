@@ -24,11 +24,11 @@ export async function GET(request: NextRequest) {
     .from(checklistCategories)
     .orderBy(asc(checklistCategories.sortOrder));
 
-  // Filter by shift function: 🚗 categories = driver (K), rest = paramedic (R)
+  // Filter by shift function using the function column
   if (fn === "K") {
-    allCategories = allCategories.filter((c) => c.name.startsWith("\u{1F698}"));
+    allCategories = allCategories.filter((c) => c.function === "K" || c.function === null);
   } else if (fn === "R") {
-    allCategories = allCategories.filter((c) => !c.name.startsWith("\u{1F698}"));
+    allCategories = allCategories.filter((c) => c.function === "R" || c.function === null);
   }
 
   const categories = allCategories;
@@ -85,6 +85,15 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json();
   const { userId, date, items } = body;
+
+  // Lock checklist after end of day
+  const endOfDay = new Date(`${date}T23:59:59`);
+  if (new Date() > endOfDay) {
+    return NextResponse.json(
+      { error: "Checklista z tego dnia jest już zamknięta" },
+      { status: 400 }
+    );
+  }
 
   // Get or create daily checklist
   let [existing] = await db

@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     .innerJoin(users, eq(shiftProposals.userId, users.id))
       .where(and(eq(shiftProposals.year, year), eq(shiftProposals.month, month))),
     db
-      .select({ id: users.id, name: users.name, role: users.role })
+      .select({ id: users.id, name: users.name, role: users.role, minHours: users.minHours, maxHours: users.maxHours })
       .from(users)
       .where(eq(users.isActive, true))
       .orderBy(asc(users.name)),

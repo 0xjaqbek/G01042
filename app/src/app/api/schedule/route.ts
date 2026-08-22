@@ -5,7 +5,6 @@ import { eq, and } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import {
   getCoverageIssueDates,
-  getHoursLimit,
   getMemberHours,
   getRestConflicts,
   type ScheduleDraftEntry,
@@ -88,7 +87,7 @@ export async function POST(request: NextRequest) {
   }
 
   const team = await db
-    .select({ id: users.id, name: users.name })
+    .select({ id: users.id, name: users.name, minHours: users.minHours, maxHours: users.maxHours })
     .from(users)
     .where(eq(users.isActive, true));
   const teamIds = new Set(team.map((member) => member.id));
@@ -100,17 +99,20 @@ export async function POST(request: NextRequest) {
   const coverageIssues = getCoverageIssueDates(normalizedEntries, year, month);
   const restConflicts = getRestConflicts(normalizedEntries);
   const overLimit = team.filter((member) => {
-    const { max } = getHoursLimit(member.name);
-    return getMemberHours(normalizedEntries, member.id) > max;
+    return getMemberHours(normalizedEntries, member.id) > member.maxHours;
+  });
+  const underLimit = team.filter((member) => {
+    return getMemberHours(normalizedEntries, member.id) < member.minHours;
   });
 
-  if (coverageIssues.length || restConflicts.length || overLimit.length) {
+  if (coverageIssues.length || restConflicts.length || overLimit.length || underLimit.length) {
     return NextResponse.json(
       {
         error: "Grafik wymaga poprawy przed publikacją",
         coverageIssues,
         restConflicts,
         overLimit: overLimit.map((member) => member.id),
+        underLimit: underLimit.map((member) => member.id),
       },
       { status: 400 }
     );

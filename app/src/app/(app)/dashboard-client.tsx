@@ -26,6 +26,8 @@ interface DashboardProps {
     role: string;
     isLeader: boolean;
   };
+  hasShiftToday: boolean;
+  checklistDone: boolean;
 }
 
 interface Announcement {
@@ -81,7 +83,7 @@ const menuItems = [
   },
 ];
 
-export function DashboardClient({ user }: DashboardProps) {
+export function DashboardClient({ user, hasShiftToday, checklistDone }: DashboardProps) {
   const firstName = user.name.split(" ").pop();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
@@ -143,6 +145,26 @@ export function DashboardClient({ user }: DashboardProps) {
           </div>
         </div>
       </div>
+
+      {/* Checklist reminder */}
+      {hasShiftToday && !checklistDone && (
+        <div className="px-4 pb-2">
+          <Link href="/checklista">
+            <div className="flex items-center gap-3 rounded-xl border border-amber-600/40 bg-amber-950/20 p-3 cursor-pointer hover:bg-amber-950/30 transition-colors">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/15">
+                <ClipboardList className="h-4 w-4 text-amber-500 dark:text-amber-400" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold">Checklista nieukończona</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Masz dzisiaj dyżur — wypełnij checklistę
+                </p>
+              </div>
+              <ChevronRight className="h-4 w-4 shrink-0 text-amber-500/60" />
+            </div>
+          </Link>
+        </div>
+      )}
 
       {/* Announcements */}
       {normalUnacked.length > 0 && (

@@ -80,6 +80,14 @@ export async function POST(request: NextRequest) {
     .limit(1);
 
   if (existing.length > 0) {
+    // Block editing approved or rejected proposals
+    if (existing[0].status === "approved" || existing[0].status === "rejected") {
+      return NextResponse.json(
+        { error: "Propozycja została już rozpatrzona i nie można jej edytować" },
+        { status: 400 }
+      );
+    }
+
     await db
       .delete(proposalEntries)
       .where(eq(proposalEntries.proposalId, existing[0].id));

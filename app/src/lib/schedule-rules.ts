@@ -15,28 +15,17 @@ export interface TeamMember {
   id: number;
   name: string;
   role: "kierowca" | "ratownik" | "oba";
+  minHours?: number;
+  maxHours?: number;
 }
 
-const HOURS_LIMITS: Record<string, { min: number; max: number }> = {
-  "reszczynski lukasz": { min: 180, max: 240 },
-  "ceplin waldemar": { min: 120, max: 180 },
-  "martyna pawel": { min: 120, max: 120 },
-  "michniewicz tomasz": { min: 120, max: 120 },
-  "porzezinski mateusz": { min: 180, max: 240 },
-  "roginski tomasz": { min: 120, max: 120 },
-  "szarynski tomasz": { min: 120, max: 180 },
-  "szymanski tomasz": { min: 120, max: 180 },
-  "tekien marek": { min: 120, max: 120 },
-  "turzynski krystian": { min: 120, max: 180 },
-};
+const DEFAULT_HOURS_LIMIT = { min: 120, max: 240 };
 
-export function getHoursLimit(name: string) {
-  const key = name
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .trim();
-  return HOURS_LIMITS[key] ?? { min: 120, max: 240 };
+export function getHoursLimit(
+  _name: string,
+  override?: { min: number; max: number }
+) {
+  return override ?? DEFAULT_HOURS_LIMIT;
 }
 
 export function toShiftCode(entry: Pick<ScheduleDraftEntry, "shiftType" | "shiftFunction">): ShiftCode {

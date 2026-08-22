@@ -30,6 +30,7 @@ export function ChecklistaClient({ userId, shiftFunction }: { userId: string; sh
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const today = new Date().toISOString().split("T")[0];
+  const isLocked = new Date().toISOString().split("T")[0] !== today;
 
   useEffect(() => {
     const params = new URLSearchParams({ userId, date: today });
@@ -189,20 +190,26 @@ export function ChecklistaClient({ userId, shiftFunction }: { userId: string; sh
         )}
 
         {categories.length > 0 && (
-          <Button
-            className="h-11 w-full bg-primary font-semibold hover:bg-primary/90"
-            onClick={saveChecklist}
-            disabled={saving}
-          >
-            {saving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Zapisywanie...
-              </>
-            ) : (
-              "Zapisz checklistę"
-            )}
-          </Button>
+          isLocked ? (
+            <Card className="border-amber-600/50 bg-amber-950/20 p-4 text-center text-sm text-amber-400">
+              Checklista z tego dnia jest zamknięta i nie można jej edytować.
+            </Card>
+          ) : (
+            <Button
+              className="h-11 w-full bg-primary font-semibold hover:bg-primary/90"
+              onClick={saveChecklist}
+              disabled={saving}
+            >
+              {saving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Zapisywanie...
+                </>
+              ) : (
+                "Zapisz checklistę"
+              )}
+            </Button>
+          )
         )}
       </div>
     </>

@@ -36,6 +36,8 @@ export const users = pgTable("users", {
   role: roleEnum("role").notNull(),
   isLeader: boolean("is_leader").default(false).notNull(),
   isActive: boolean("is_active").default(true).notNull(),
+  minHours: integer("min_hours").default(120).notNull(),
+  maxHours: integer("max_hours").default(240).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -94,6 +96,7 @@ export const checklistCategories = pgTable("checklist_categories", {
   id: serial("id").primaryKey(),
   name: varchar("name", { length: 100 }).notNull(),
   sortOrder: integer("sort_order").default(0).notNull(),
+  function: shiftFunctionEnum("function"),
 });
 
 export const checklistItems = pgTable("checklist_items", {

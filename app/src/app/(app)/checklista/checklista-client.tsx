@@ -25,14 +25,16 @@ interface ChecklistItem {
   notes: string;
 }
 
-export function ChecklistaClient({ userId }: { userId: string }) {
+export function ChecklistaClient({ userId, shiftFunction }: { userId: string; shiftFunction: string | null }) {
   const [categories, setCategories] = useState<ChecklistCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const today = new Date().toISOString().split("T")[0];
 
   useEffect(() => {
-    fetch(`/api/checklist?userId=${userId}&date=${today}`)
+    const params = new URLSearchParams({ userId, date: today });
+    if (shiftFunction) params.set("fn", shiftFunction);
+    fetch(`/api/checklist?${params}`)
       .then((r) => r.json())
       .then((data) => {
         setCategories(data.categories || []);
@@ -92,7 +94,7 @@ export function ChecklistaClient({ userId }: { userId: string }) {
     <>
       <PageHeader
         title="Checklista dzienna"
-        description={today}
+        description={`${today} — ${shiftFunction === "K" ? "Kierowca" : shiftFunction === "R" ? "Ratownik" : "Brak dyżuru"}`}
       />
       <div className="p-4 space-y-3">
         {/* Progress bar */}

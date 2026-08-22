@@ -16,12 +16,22 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const userId = parseInt(searchParams.get("userId") || session.user.id);
   const date = searchParams.get("date") || new Date().toISOString().split("T")[0];
+  const fn = searchParams.get("fn"); // K or R
 
   // Get all categories and items
-  const categories = await db
+  let allCategories = await db
     .select()
     .from(checklistCategories)
     .orderBy(asc(checklistCategories.sortOrder));
+
+  // Filter by shift function: 🚗 categories = driver (K), rest = paramedic (R)
+  if (fn === "K") {
+    allCategories = allCategories.filter((c) => c.name.startsWith("\u{1F698}"));
+  } else if (fn === "R") {
+    allCategories = allCategories.filter((c) => !c.name.startsWith("\u{1F698}"));
+  }
+
+  const categories = allCategories;
 
   const items = await db
     .select()

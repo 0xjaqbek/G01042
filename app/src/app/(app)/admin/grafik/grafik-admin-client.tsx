@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { SHIFT_CODES, formatDate, getAllowedShiftCodes, getCoverage, getCoverageIssueDates, getMemberHours, getRestConflicts, splitShiftCode, toShiftCode, type ScheduleDraftEntry, type ShiftCode, type ShiftFunction, type ShiftType, type TeamMember } from "@/lib/schedule-rules";
+import { analyzeProposalDemand, getFairnessStats, suggestAssignments, type DayDemand, type MemberFairness } from "@/lib/schedule-solver";
 
 const MONTHS = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
 const DAYS = ["Nd", "Pn", "Wt", "Śr", "Cz", "Pt", "Sb"];
@@ -63,6 +64,7 @@ export function GrafikAdminClient() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [changelog, setChangelog] = useState<ChangelogEntry[]>([]);
   const [changelogLoading, setChangelogLoading] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -101,6 +103,12 @@ export function GrafikAdminClient() {
     }
     return map;
   }, [approvedProposals]);
+
+  const activeProposals = useMemo(() => proposals.filter((p) => p.status === "submitted" || p.status === "approved"), [proposals]);
+  const demand = useMemo(() => analyzeProposalDemand(activeProposals.map((p) => ({ userId: p.userId, entries: p.entries })), team, year, month), [activeProposals, team, year, month]);
+  const fairness = useMemo(() => getFairnessStats(team, draft), [team, draft]);
+  const suggestions = useMemo(() => showSuggestions ? suggestAssignments(team, draft, year, month) : [], [showSuggestions, team, draft, year, month]);
+  const selectedDemand = demand.find((d) => d.day === selectedDay);
 
   function changeMonth(delta: number) {
     const date = new Date(year, month - 1 + delta, 1);
@@ -150,6 +158,10 @@ export function GrafikAdminClient() {
     setMessage(null);
   }
 
+  function acceptAllSuggestions() {
+    setDraft((prev) => [...prev, ...suggestions]);
+  }
+
   async function publish() {
     if (!canPublish) return;
     setPublishing(true);
@@ -177,20 +189,35 @@ export function GrafikAdminClient() {
 
         <TabsContent value="creator" className="space-y-4">
           {loading ? <Loading /> : <>
-            <div className="grid grid-cols-3 gap-2">
+            <div className={cn("grid gap-2", showSuggestions ? "grid-cols-4" : "grid-cols-3")}>
               <Metric label="Dyżury" value={draft.length} />
               <Metric label="Dni do poprawy" value={coverageIssueDays.length} alert={coverageIssueDays.length > 0} />
               <Metric label="Konflikty" value={restConflicts.length} alert={restConflicts.length > 0} />
+              {showSuggestions && <Metric label="Sugestie" value={suggestions.length} />}
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <Button variant="outline" onClick={importApproved} disabled={approvedProposals.length === 0}><Sparkles className="mr-1 h-4 w-4" />Wczytaj propozycje</Button>
-              <Button variant="outline" onClick={() => setDraft(publishedEntries)} disabled={publishedEntries.length === 0}><RotateCcw className="mr-1 h-4 w-4" />Przywróć grafik</Button>
+            <div className="grid grid-cols-3 gap-2">
+              <Button variant="outline" onClick={importApproved} disabled={approvedProposals.length === 0}><Sparkles className="mr-1 h-4 w-4" />Wczytaj</Button>
+              <Button variant="outline" onClick={() => setDraft(publishedEntries)} disabled={publishedEntries.length === 0}><RotateCcw className="mr-1 h-4 w-4" />Przywróć</Button>
+              <Button variant={showSuggestions ? "default" : "outline"} onClick={() => setShowSuggestions((p) => !p)}><Sparkles className="mr-1 h-4 w-4" />Sugestie</Button>
             </div>
+            {showSuggestions && suggestions.length > 0 && (
+              <Button variant="outline" className="w-full border-emerald-700/50 text-emerald-400 hover:bg-emerald-950/20" onClick={acceptAllSuggestions}>
+                <Check className="mr-1 h-4 w-4" />Zaakceptuj {suggestions.length} sugestii
+              </Button>
+            )}
             {message && <Notice type={message.type}>{message.text}</Notice>}
-            <DayPicker year={year} month={month} days={daysInMonth} selectedDay={selectedDay} issueDays={coverageIssueDays} onSelect={setSelectedDay} />
+            <DayPicker year={year} month={month} days={daysInMonth} selectedDay={selectedDay} issueDays={coverageIssueDays} demand={demand} onSelect={setSelectedDay} />
             <Card size="sm">
               <CardHeader><CardTitle>{selectedDay} {MONTHS[month - 1].toLowerCase()}</CardTitle></CardHeader>
               <CardContent className="grid grid-cols-2 gap-2">
+                {selectedDemand && selectedDemand.total > 0 && (
+                  <p className="col-span-2 text-[11px] text-muted-foreground mb-1">
+                    Propozycje: {selectedDemand.dayK.length + selectedDemand.nightK.length} K, {selectedDemand.dayR.length + selectedDemand.nightR.length} R
+                    {(selectedDemand.dayK.length > 1 || selectedDemand.nightK.length > 1 || selectedDemand.dayR.length > 1 || selectedDemand.nightR.length > 1) && (
+                      <span className="text-amber-500 ml-1">· nadwyżka</span>
+                    )}
+                  </p>
+                )}
                 <CoverageStatus label="Dzień · kierowca" count={coverage.dayK} />
                 <CoverageStatus label="Dzień · ratownik" count={coverage.dayR} />
                 <CoverageStatus label="Noc · kierowca" count={coverage.nightK} />
@@ -205,8 +232,12 @@ export function GrafikAdminClient() {
                   const code = assignment ? toShiftCode(assignment) : "NONE";
                   const proposed = approvedByMemberDay.get(`${member.id}:${selectedDay}`);
                   const changed = proposed && code !== "NONE" && !code.startsWith(proposed);
+                  const memberSuggestion = suggestions.find((s) => s.userId === member.id && s.date === selectedDate);
                   return <div key={member.id} className="flex min-h-14 items-center gap-3 px-3 py-2">
                     <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{member.name}</p><p className={cn("text-xs text-muted-foreground", changed && "text-amber-500")}>{proposed ? (changed ? `Propozycja: ${proposed}` : "Zgodnie z propozycją") : "Brak zatwierdzonej propozycji"}</p></div>
+                    {memberSuggestion && code === "NONE" && (
+                      <button onClick={() => setAssignment(member.id, toShiftCode(memberSuggestion))} className="shrink-0 text-[10px] px-2 py-1 rounded border border-dashed border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors">{toShiftCode(memberSuggestion)}</button>
+                    )}
                     <Select value={code} onValueChange={(value) => setAssignment(member.id, (value ?? "NONE") as ShiftCode | "NONE")}>
                       <SelectTrigger className="w-24"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="NONE">Wolne</SelectItem>{getAllowedShiftCodes(member.role).map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
                     </Select>
@@ -214,7 +245,7 @@ export function GrafikAdminClient() {
                 })}
               </CardContent>
             </Card>
-            <HoursSummary team={team} entries={draft} conflicts={restConflicts} />
+            <FairnessPanel stats={fairness} conflicts={restConflicts} />
             <Card size="sm"><CardHeader><CardTitle>Zasady kontroli</CardTitle></CardHeader><CardContent className="space-y-2 text-xs text-muted-foreground">
               <p>Dzień i noc wymagają dokładnie jednego kierowcy oraz jednego ratownika.</p><p>D i N liczą po 12 h. DN liczy 24 h i obsadza obie zmiany.</p><p>Konflikt 36 h: po DN nie może być D ani DN następnego dnia; po N nie może być DN.</p><p>Niedobór godzin jest ostrzeżeniem. Nadmiar ponad maksimum oraz konflikty blokują publikację.</p>
             </CardContent></Card>
@@ -244,8 +275,8 @@ function MonthNavigation({ year, month, submitted, onChange }: { year: number; m
   return <div className="flex items-center justify-between"><Button variant="ghost" size="icon" onClick={() => onChange(-1)} aria-label="Poprzedni miesiąc"><ChevronLeft /></Button><div className="text-center"><h2 className="font-semibold">{MONTHS[month - 1]} {year}</h2><p className="text-xs text-muted-foreground">{submitted} oczekuje na decyzję</p></div><Button variant="ghost" size="icon" onClick={() => onChange(1)} aria-label="Następny miesiąc"><ChevronRight /></Button></div>;
 }
 
-function DayPicker({ year, month, days, selectedDay, issueDays, onSelect }: { year: number; month: number; days: number; selectedDay: number; issueDays: number[]; onSelect: (day: number) => void }) {
-  return <div className="-mx-4 overflow-x-auto px-4 pb-1"><div className="flex w-max gap-1.5">{Array.from({ length: days }, (_, index) => index + 1).map((day) => { const dayName = DAYS[new Date(year, month - 1, day).getDay()]; const issue = issueDays.includes(day); return <button key={day} onClick={() => onSelect(day)} className={cn("relative flex h-14 w-11 shrink-0 flex-col items-center justify-center rounded-md border text-xs", selectedDay === day ? "border-red-500 bg-red-500/15" : "border-border bg-card", issue && "after:absolute after:right-1 after:top-1 after:h-1.5 after:w-1.5 after:rounded-full after:bg-amber-500")}><span className="font-semibold">{day}</span><span className="text-[10px] text-muted-foreground">{dayName}</span></button>; })}</div></div>;
+function DayPicker({ year, month, days, selectedDay, issueDays, demand, onSelect }: { year: number; month: number; days: number; selectedDay: number; issueDays: number[]; demand: DayDemand[]; onSelect: (day: number) => void }) {
+  return <div className="-mx-4 overflow-x-auto px-4 pb-1"><div className="flex w-max gap-1.5">{Array.from({ length: days }, (_, index) => index + 1).map((day) => { const dayName = DAYS[new Date(year, month - 1, day).getDay()]; const issue = issueDays.includes(day); const dayDemand = demand.find((d) => d.day === day); return <button key={day} onClick={() => onSelect(day)} className={cn("relative flex h-14 w-11 shrink-0 flex-col items-center justify-center rounded-md border text-xs", selectedDay === day ? "border-red-500 bg-red-500/15" : "border-border bg-card", issue && "after:absolute after:right-1 after:top-1 after:h-1.5 after:w-1.5 after:rounded-full after:bg-amber-500")}><span className="font-semibold">{day}</span><span className="text-[10px] text-muted-foreground">{dayName}</span>{dayDemand && dayDemand.total > 0 && <span className="absolute -top-1.5 -left-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-sky-600 text-[7px] font-bold text-white">{dayDemand.total}</span>}</button>; })}</div></div>;
 }
 
 function CoverageStatus({ label, count }: { label: string; count: number }) {
@@ -253,8 +284,24 @@ function CoverageStatus({ label, count }: { label: string; count: number }) {
   return <div className={cn("flex items-center justify-between rounded-md border px-2 py-2 text-xs", ok ? "border-emerald-700/50 bg-emerald-950/20" : "border-amber-600/50 bg-amber-950/20")}><span>{label}</span><span className="flex items-center gap-1 font-semibold">{ok ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" /> : <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />}{count}/1</span></div>;
 }
 
-function HoursSummary({ team, entries, conflicts }: { team: TeamMember[]; entries: ScheduleDraftEntry[]; conflicts: ReturnType<typeof getRestConflicts> }) {
-  return <Card size="sm"><CardHeader><CardTitle>Godziny zespołu</CardTitle></CardHeader><CardContent className="space-y-2">{team.map((member) => { const hours = getMemberHours(entries, member.id); const min = member.minHours ?? 120; const max = member.maxHours ?? 240; const hasConflict = conflicts.some((conflict) => conflict.userId === member.id); const state = hours > max ? "over" : hours < min ? "under" : "ok"; return <div key={member.id} className="flex items-center gap-2 text-xs"><span className="min-w-0 flex-1 truncate">{member.name}</span>{hasConflict && <Badge className="bg-red-700">36 h</Badge>}<span className={cn("font-semibold tabular-nums", state === "over" && "text-red-500", state === "under" && "text-amber-500", state === "ok" && "text-emerald-500")}>{hours} / {min}-{max} h</span></div>; })}</CardContent></Card>;
+function FairnessPanel({ stats, conflicts }: { stats: MemberFairness[]; conflicts: ReturnType<typeof getRestConflicts> }) {
+  return <Card size="sm"><CardHeader><CardTitle>Sprawiedliwość</CardTitle></CardHeader><CardContent className="space-y-2.5">{stats.map((m) => {
+    const hasConflict = conflicts.some((c) => c.userId === m.id);
+    const state = m.hours > m.maxHours ? "over" : m.hours < m.minHours ? "under" : "ok";
+    return <div key={m.id} className="space-y-1">
+      <div className="flex items-center gap-2 text-xs">
+        <span className="min-w-0 flex-1 truncate font-medium">{m.name}</span>
+        {hasConflict && <Badge className="bg-red-700 text-[10px]">36h</Badge>}
+        <span className={cn("tabular-nums font-semibold", state === "over" && "text-red-500", state === "under" && "text-amber-500", state === "ok" && "text-emerald-500")}>{m.hours}h</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
+          <div className={cn("h-full rounded-full transition-all", state === "over" ? "bg-red-500" : state === "under" ? "bg-amber-500" : "bg-emerald-500")} style={{ width: `${Math.min(m.loadRatio * 100, 100)}%` }} />
+        </div>
+        <span className="text-[10px] text-muted-foreground tabular-nums shrink-0">{m.nightCount}N {m.weekendCount}W</span>
+      </div>
+    </div>;
+  })}</CardContent></Card>;
 }
 
 function DraftPreview({ year, month, team, entries, issueDays }: { year: number; month: number; team: TeamMember[]; entries: ScheduleDraftEntry[]; issueDays: number[] }) {

@@ -101,6 +101,35 @@ export function getAllowedShiftCodes(role: TeamMember["role"]): readonly ShiftCo
   return SHIFT_CODES;
 }
 
+export function isConflictPair(first: ShiftType, second: ShiftType): boolean {
+  return (
+    (first === "DN" && (second === "D" || second === "DN")) ||
+    (first === "N" && second === "DN")
+  );
+}
+
+export function addDays(dateStr: string, count: number): string {
+  const d = new Date(`${dateStr}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + count);
+  return d.toISOString().split("T")[0];
+}
+
+export function wouldCreateRestConflict(
+  entries: ScheduleDraftEntry[],
+  userId: number,
+  date: string,
+  shiftType: ShiftType
+): boolean {
+  const prevDate = addDays(date, -1);
+  const nextDate = addDays(date, 1);
+  for (const e of entries) {
+    if (e.userId !== userId) continue;
+    if (e.date === prevDate && isConflictPair(e.shiftType, shiftType)) return true;
+    if (e.date === nextDate && isConflictPair(shiftType, e.shiftType)) return true;
+  }
+  return false;
+}
+
 function daysBetween(first: string, second: string) {
   const firstDate = new Date(`${first}T00:00:00Z`);
   const secondDate = new Date(`${second}T00:00:00Z`);

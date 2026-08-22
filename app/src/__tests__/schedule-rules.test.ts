@@ -11,6 +11,9 @@ import {
   formatDate,
   getAllowedShiftCodes,
   getHoursLimit,
+  isConflictPair,
+  addDays,
+  wouldCreateRestConflict,
   type ScheduleDraftEntry,
   type ShiftCode,
 } from "@/lib/schedule-rules";
@@ -454,5 +457,122 @@ describe("SHIFT_CODES", () => {
     expect(SHIFT_CODES).toContain("N-R");
     expect(SHIFT_CODES).toContain("DN-K");
     expect(SHIFT_CODES).toContain("DN-R");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isConflictPair
+// ---------------------------------------------------------------------------
+
+describe("isConflictPair", () => {
+  it("DN → D is a conflict", () => {
+    expect(isConflictPair("DN", "D")).toBe(true);
+  });
+
+  it("DN → DN is a conflict", () => {
+    expect(isConflictPair("DN", "DN")).toBe(true);
+  });
+
+  it("N → DN is a conflict", () => {
+    expect(isConflictPair("N", "DN")).toBe(true);
+  });
+
+  it("DN → N is NOT a conflict", () => {
+    expect(isConflictPair("DN", "N")).toBe(false);
+  });
+
+  it("D → D is NOT a conflict", () => {
+    expect(isConflictPair("D", "D")).toBe(false);
+  });
+
+  it("D → N is NOT a conflict", () => {
+    expect(isConflictPair("D", "N")).toBe(false);
+  });
+
+  it("N → D is NOT a conflict", () => {
+    expect(isConflictPair("N", "D")).toBe(false);
+  });
+
+  it("N → N is NOT a conflict", () => {
+    expect(isConflictPair("N", "N")).toBe(false);
+  });
+
+  it("D → DN is NOT a conflict", () => {
+    expect(isConflictPair("D", "DN")).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// addDays
+// ---------------------------------------------------------------------------
+
+describe("addDays", () => {
+  it("adds 1 day", () => {
+    expect(addDays("2026-08-15", 1)).toBe("2026-08-16");
+  });
+
+  it("subtracts 1 day", () => {
+    expect(addDays("2026-08-15", -1)).toBe("2026-08-14");
+  });
+
+  it("crosses month boundary forward", () => {
+    expect(addDays("2026-08-31", 1)).toBe("2026-09-01");
+  });
+
+  it("crosses month boundary backward", () => {
+    expect(addDays("2026-09-01", -1)).toBe("2026-08-31");
+  });
+
+  it("crosses year boundary", () => {
+    expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
+  });
+
+  it("handles zero days", () => {
+    expect(addDays("2026-08-15", 0)).toBe("2026-08-15");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// wouldCreateRestConflict
+// ---------------------------------------------------------------------------
+
+describe("wouldCreateRestConflict", () => {
+  it("detects conflict with previous day DN → D", () => {
+    const entries = [entry(1, "2026-08-14", "DN", "K")];
+    expect(wouldCreateRestConflict(entries, 1, "2026-08-15", "D")).toBe(true);
+  });
+
+  it("detects conflict with next day DN → D (adding DN before existing D)", () => {
+    const entries = [entry(1, "2026-08-16", "D", "K")];
+    expect(wouldCreateRestConflict(entries, 1, "2026-08-15", "DN")).toBe(true);
+  });
+
+  it("allows D after D", () => {
+    const entries = [entry(1, "2026-08-14", "D", "K")];
+    expect(wouldCreateRestConflict(entries, 1, "2026-08-15", "D")).toBe(false);
+  });
+
+  it("allows N after DN (rest during day)", () => {
+    const entries = [entry(1, "2026-08-14", "DN", "K")];
+    expect(wouldCreateRestConflict(entries, 1, "2026-08-15", "N")).toBe(false);
+  });
+
+  it("ignores other users' entries", () => {
+    const entries = [entry(2, "2026-08-14", "DN", "K")];
+    expect(wouldCreateRestConflict(entries, 1, "2026-08-15", "D")).toBe(false);
+  });
+
+  it("ignores non-adjacent days", () => {
+    const entries = [entry(1, "2026-08-13", "DN", "K")];
+    expect(wouldCreateRestConflict(entries, 1, "2026-08-15", "D")).toBe(false);
+  });
+
+  it("checks both prev and next directions", () => {
+    const entries = [
+      entry(1, "2026-08-14", "D", "K"),
+      entry(1, "2026-08-16", "DN", "K"),
+    ];
+    // N on 15th: prev D→N OK, but N→DN on next day is conflict
+    expect(wouldCreateRestConflict(entries, 1, "2026-08-15", "N")).toBe(true);
   });
 });

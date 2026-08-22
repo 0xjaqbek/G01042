@@ -65,6 +65,7 @@ export function GrafikAdminClient() {
   const [changelog, setChangelog] = useState<ChangelogEntry[]>([]);
   const [changelogLoading, setChangelogLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [reviewIndex, setReviewIndex] = useState<number | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -158,8 +159,8 @@ export function GrafikAdminClient() {
     setMessage(null);
   }
 
-  function acceptAllSuggestions() {
-    setDraft((prev) => [...prev, ...suggestions]);
+  function acceptSuggestion(s: ScheduleDraftEntry) {
+    setDraft((prev) => [...prev, s]);
   }
 
   async function publish() {
@@ -198,13 +199,39 @@ export function GrafikAdminClient() {
             <div className="grid grid-cols-3 gap-2">
               <Button variant="outline" onClick={importApproved} disabled={approvedProposals.length === 0}><Sparkles className="mr-1 h-4 w-4" />Wczytaj</Button>
               <Button variant="outline" onClick={() => setDraft(publishedEntries)} disabled={publishedEntries.length === 0}><RotateCcw className="mr-1 h-4 w-4" />Przywróć</Button>
-              <Button variant={showSuggestions ? "default" : "outline"} onClick={() => setShowSuggestions((p) => !p)}><Sparkles className="mr-1 h-4 w-4" />Sugestie</Button>
+              <Button variant={showSuggestions ? "default" : "outline"} onClick={() => { setShowSuggestions((p) => !p); setReviewIndex(null); }}><Sparkles className="mr-1 h-4 w-4" />Sugestie</Button>
             </div>
-            {showSuggestions && suggestions.length > 0 && (
-              <Button variant="outline" className="w-full border-emerald-700/50 text-emerald-400 hover:bg-emerald-950/20" onClick={acceptAllSuggestions}>
-                <Check className="mr-1 h-4 w-4" />Zaakceptuj {suggestions.length} sugestii
+            {showSuggestions && suggestions.length > 0 && reviewIndex === null && (
+              <Button variant="outline" className="w-full border-emerald-700/50 text-emerald-400 hover:bg-emerald-950/20" onClick={() => setReviewIndex(0)}>
+                <Check className="mr-1 h-4 w-4" />Sprawdź sugestie ({suggestions.length})
               </Button>
             )}
+            {reviewIndex !== null && (() => {
+              const s = suggestions[reviewIndex];
+              if (!s) return <Notice type="success">Koniec sugestii — sprawdzono wszystkie.</Notice>;
+              const member = team.find((m) => m.id === s.userId);
+              const dayNum = parseInt(s.date.slice(8, 10));
+              const code = toShiftCode(s);
+              return <Card size="sm" className="border-emerald-700/50 bg-emerald-950/10">
+                <CardContent className="p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-muted-foreground">Sugestia {reviewIndex + 1} z {suggestions.length}</p>
+                    <button onClick={() => setReviewIndex(null)} className="text-xs text-muted-foreground hover:text-foreground">Zamknij</button>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Badge className={cn(SHIFT_COLORS[code])}>{code}</Badge>
+                    <div>
+                      <p className="text-sm font-medium">{member?.name ?? `ID ${s.userId}`}</p>
+                      <p className="text-xs text-muted-foreground">{dayNum} {MONTHS[month - 1].toLowerCase()}</p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button size="sm" className="bg-emerald-700 hover:bg-emerald-800" onClick={() => { acceptSuggestion(s); setReviewIndex((i) => i ?? 0); }}><Check className="mr-1 h-4 w-4" />Akceptuj</Button>
+                    <Button size="sm" variant="outline" onClick={() => setReviewIndex((i) => (i ?? 0) + 1)}><X className="mr-1 h-4 w-4" />Pomiń</Button>
+                  </div>
+                </CardContent>
+              </Card>;
+            })()}
             {message && <Notice type={message.type}>{message.text}</Notice>}
             <DayPicker year={year} month={month} days={daysInMonth} selectedDay={selectedDay} issueDays={coverageIssueDays} demand={demand} onSelect={setSelectedDay} />
             <Card size="sm">
@@ -276,7 +303,7 @@ function MonthNavigation({ year, month, submitted, onChange }: { year: number; m
 }
 
 function DayPicker({ year, month, days, selectedDay, issueDays, demand, onSelect }: { year: number; month: number; days: number; selectedDay: number; issueDays: number[]; demand: DayDemand[]; onSelect: (day: number) => void }) {
-  return <div className="-mx-4 overflow-x-auto px-4 pb-1"><div className="flex w-max gap-1.5">{Array.from({ length: days }, (_, index) => index + 1).map((day) => { const dayName = DAYS[new Date(year, month - 1, day).getDay()]; const issue = issueDays.includes(day); const dayDemand = demand.find((d) => d.day === day); return <button key={day} onClick={() => onSelect(day)} className={cn("relative flex h-14 w-11 shrink-0 flex-col items-center justify-center rounded-md border text-xs", selectedDay === day ? "border-red-500 bg-red-500/15" : "border-border bg-card", issue && "after:absolute after:right-1 after:top-1 after:h-1.5 after:w-1.5 after:rounded-full after:bg-amber-500")}><span className="font-semibold">{day}</span><span className="text-[10px] text-muted-foreground">{dayName}</span>{dayDemand && dayDemand.total > 0 && <span className="absolute -top-1.5 -left-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-sky-600 text-[7px] font-bold text-white">{dayDemand.total}</span>}</button>; })}</div></div>;
+  return <div className="-mx-4 overflow-x-auto overflow-y-visible px-4 pb-2 pt-3"><div className="flex w-max gap-1.5">{Array.from({ length: days }, (_, index) => index + 1).map((day) => { const dayName = DAYS[new Date(year, month - 1, day).getDay()]; const issue = issueDays.includes(day); const dayDemand = demand.find((d) => d.day === day); return <button key={day} onClick={() => onSelect(day)} className={cn("relative flex h-16 w-12 shrink-0 flex-col items-center justify-center rounded-md border text-xs", selectedDay === day ? "border-red-500 bg-red-500/15" : "border-border bg-card", issue && "after:absolute after:right-1 after:top-1 after:h-1.5 after:w-1.5 after:rounded-full after:bg-amber-500")}><span className="font-semibold">{day}</span><span className="text-[10px] text-muted-foreground">{dayName}</span>{dayDemand && dayDemand.total > 0 && <span className="absolute -top-1.5 -left-1.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-sky-600 text-[7px] font-bold text-white">{dayDemand.total}</span>}</button>; })}</div></div>;
 }
 
 function CoverageStatus({ label, count }: { label: string; count: number }) {

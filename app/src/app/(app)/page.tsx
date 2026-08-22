@@ -1,8 +1,8 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import { db } from "@/db";
-import { dailyChecklists, scheduleEntries } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { dailyChecklists, scheduleEntries, shiftProposals } from "@/db/schema";
+import { eq, and, ne } from "drizzle-orm";
 import { DashboardClient } from "./dashboard-client";
 
 export default async function HomePage() {
@@ -39,11 +39,33 @@ export default async function HomePage() {
     checklistDone = !!checklist?.completedAt;
   }
 
+  // Check if proposal reminder should show (5th-12th of month, no submitted proposal for next month)
+  const now = new Date();
+  const dayOfMonth = now.getDate();
+  let showProposalReminder = false;
+  if (dayOfMonth >= 5 && dayOfMonth <= 12) {
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const [existing] = await db
+      .select({ id: shiftProposals.id })
+      .from(shiftProposals)
+      .where(
+        and(
+          eq(shiftProposals.userId, Number(session.user.id)),
+          eq(shiftProposals.year, nextMonth.getFullYear()),
+          eq(shiftProposals.month, nextMonth.getMonth() + 1),
+          ne(shiftProposals.status, "draft")
+        )
+      )
+      .limit(1);
+    showProposalReminder = !existing;
+  }
+
   return (
     <DashboardClient
       user={session.user}
       hasShiftToday={!!todayShift}
       checklistDone={checklistDone}
+      showProposalReminder={showProposalReminder}
     />
   );
 }

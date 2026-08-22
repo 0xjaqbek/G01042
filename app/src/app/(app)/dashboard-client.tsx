@@ -28,6 +28,7 @@ interface DashboardProps {
   };
   hasShiftToday: boolean;
   checklistDone: boolean;
+  showProposalReminder: boolean;
 }
 
 interface Announcement {
@@ -83,7 +84,7 @@ const menuItems = [
   },
 ];
 
-export function DashboardClient({ user, hasShiftToday, checklistDone }: DashboardProps) {
+export function DashboardClient({ user, hasShiftToday, checklistDone, showProposalReminder }: DashboardProps) {
   const firstName = user.name.split(" ").pop();
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
@@ -161,6 +162,26 @@ export function DashboardClient({ user, hasShiftToday, checklistDone }: Dashboar
                 </p>
               </div>
               <ChevronRight className="h-4 w-4 shrink-0 text-amber-500/60" />
+            </div>
+          </Link>
+        </div>
+      )}
+
+      {/* Proposal reminder */}
+      {showProposalReminder && (
+        <div className="px-4 pb-2">
+          <Link href="/propozycje">
+            <div className="flex items-center gap-3 rounded-xl border border-red-800/40 bg-red-950/40 p-3 cursor-pointer hover:bg-red-950/50 transition-colors">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-500/15">
+                <AlertTriangle className="h-4 w-4 text-red-400" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-red-200">Wyślij propozycje dyżurów</p>
+                <p className="text-xs text-red-300/70 mt-0.5">
+                  Zgłoś swoje propozycje na następny miesiąc do 12.
+                </p>
+              </div>
+              <ChevronRight className="h-4 w-4 shrink-0 text-red-500/60" />
             </div>
           </Link>
         </div>

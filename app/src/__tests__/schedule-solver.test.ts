@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   analyzeProposalDemand,
   getFairnessStats,
+  suggestAssignments,
   type ProposalInput,
 } from "@/lib/schedule-solver";
 import {
@@ -189,5 +190,129 @@ describe("getFairnessStats", () => {
     expect(m1.loadRatio).toBeCloseTo(60 / 120);
     expect(m3.loadRatio).toBeCloseTo(60 / 160);
     expect(m3.loadRatio).toBeLessThan(m1.loadRatio);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// suggestAssignments
+// ---------------------------------------------------------------------------
+
+describe("suggestAssignments", () => {
+  it("returns empty when schedule is fully covered", () => {
+    const entries: ScheduleDraftEntry[] = [];
+    for (let day = 1; day <= 28; day++) {
+      const date = formatDate(2026, 2, day);
+      entries.push(entry(1, date, "D", "K"));
+      entries.push(entry(2, date, "D", "R"));
+      entries.push(entry(3, date, "N", "K"));
+      entries.push(entry(4, date, "N", "R"));
+    }
+    const result = suggestAssignments(testTeam, entries, 2026, 2);
+    expect(result).toEqual([]);
+  });
+
+  it("suggests entries for uncovered slots", () => {
+    // Use high maxHours so 27 shifts (324h) don't exceed limits
+    const bigTeam: TeamMember[] = [
+      { id: 1, name: "K1", role: "kierowca", minHours: 120, maxHours: 480 },
+      { id: 2, name: "R1", role: "ratownik", minHours: 120, maxHours: 480 },
+      { id: 3, name: "K2", role: "kierowca", minHours: 120, maxHours: 480 },
+      { id: 4, name: "R2", role: "ratownik", minHours: 120, maxHours: 480 },
+      { id: 5, name: "Oba", role: "oba", minHours: 120, maxHours: 480 },
+    ];
+    const entries: ScheduleDraftEntry[] = [];
+    for (let day = 2; day <= 28; day++) {
+      const date = formatDate(2026, 2, day);
+      entries.push(entry(1, date, "D", "K"));
+      entries.push(entry(2, date, "D", "R"));
+      entries.push(entry(3, date, "N", "K"));
+      entries.push(entry(4, date, "N", "R"));
+    }
+    const result = suggestAssignments(bigTeam, entries, 2026, 2);
+    expect(result.length).toBe(4);
+    expect(result.every((s) => s.date === "2026-02-01")).toBe(true);
+  });
+
+  it("respects function compatibility", () => {
+    const team: TeamMember[] = [
+      { id: 1, name: "K", role: "kierowca", minHours: 120, maxHours: 240 },
+      { id: 2, name: "R", role: "ratownik", minHours: 120, maxHours: 240 },
+    ];
+    const result = suggestAssignments(team, [], 2026, 2);
+    const kEntries = result.filter((s) => s.userId === 1);
+    const rEntries = result.filter((s) => s.userId === 2);
+    expect(kEntries.every((s) => s.shiftFunction === "K")).toBe(true);
+    expect(rEntries.every((s) => s.shiftFunction === "R")).toBe(true);
+  });
+
+  it("does not exceed max hours", () => {
+    const team: TeamMember[] = [
+      { id: 1, name: "A", role: "kierowca", minHours: 12, maxHours: 24 },
+      { id: 2, name: "B", role: "kierowca", minHours: 120, maxHours: 240 },
+      { id: 3, name: "C", role: "ratownik", minHours: 120, maxHours: 240 },
+    ];
+    const existing = [
+      entry(1, "2026-02-01", "D", "K"),
+      entry(1, "2026-02-02", "D", "K"),
+    ];
+    const result = suggestAssignments(team, existing, 2026, 2);
+    const aSuggestions = result.filter((s) => s.userId === 1);
+    expect(aSuggestions).toEqual([]);
+  });
+
+  it("does not create rest conflicts", () => {
+    const team: TeamMember[] = [
+      { id: 1, name: "A", role: "kierowca", minHours: 120, maxHours: 240 },
+      { id: 2, name: "B", role: "kierowca", minHours: 120, maxHours: 240 },
+      { id: 3, name: "C", role: "ratownik", minHours: 120, maxHours: 240 },
+    ];
+    const existing = [entry(1, "2026-02-01", "DN", "K")];
+    const result = suggestAssignments(team, existing, 2026, 2);
+    const day2DK = result.find(
+      (s) => s.date === "2026-02-02" && s.shiftFunction === "K" && s.shiftType === "D"
+    );
+    if (day2DK) {
+      expect(day2DK.userId).toBe(2);
+    }
+  });
+
+  it("prefers member with lowest loadRatio", () => {
+    const team: TeamMember[] = [
+      { id: 1, name: "Heavy", role: "kierowca", minHours: 120, maxHours: 240 },
+      { id: 2, name: "Light", role: "kierowca", minHours: 120, maxHours: 240 },
+    ];
+    // Heavy has 10 existing D-K shifts (120h, ratio 1.0), Light has 0h (ratio 0)
+    const existing = Array.from({ length: 10 }, (_, i) =>
+      entry(1, formatDate(2026, 2, i + 1), "D", "K")
+    );
+    const result = suggestAssignments(team, existing, 2026, 2);
+    // First K suggestion should go to Light (ratio 0 vs 1.0)
+    const firstK = result.find((s) => s.shiftFunction === "K");
+    expect(firstK).toBeDefined();
+    expect(firstK!.userId).toBe(2);
+  });
+
+  it("balances K/R for oba members", () => {
+    // 2 oba members so fnPenalty can influence candidate selection
+    const team: TeamMember[] = [
+      { id: 1, name: "Oba1", role: "oba", minHours: 120, maxHours: 240 },
+      { id: 2, name: "Oba2", role: "oba", minHours: 120, maxHours: 240 },
+    ];
+    const result = suggestAssignments(team, [], 2026, 2);
+    // Each oba member should have roughly equal K and R assignments
+    const oba1 = result.filter((s) => s.userId === 1);
+    const oba1K = oba1.filter((s) => s.shiftFunction === "K").length;
+    const oba1R = oba1.filter((s) => s.shiftFunction === "R").length;
+    expect(Math.abs(oba1K - oba1R)).toBeLessThanOrEqual(2);
+  });
+
+  it("never assigns same user twice on same day", () => {
+    const result = suggestAssignments(testTeam, [], 2026, 2);
+    const byUserDate = new Set<string>();
+    for (const s of result) {
+      const key = `${s.userId}:${s.date}`;
+      expect(byUserDate.has(key)).toBe(false);
+      byUserDate.add(key);
+    }
   });
 });

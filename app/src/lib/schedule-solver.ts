@@ -121,3 +121,100 @@ export function getFairnessStats(
     };
   });
 }
+
+// ─── Suggestion Engine ───
+
+export function suggestAssignments(
+  team: TeamMember[],
+  currentDraft: ScheduleDraftEntry[],
+  year: number,
+  month: number
+): ScheduleDraftEntry[] {
+  const working = [...currentDraft];
+  const suggestions: ScheduleDraftEntry[] = [];
+  const daysInMonth = new Date(year, month, 0).getDate();
+
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = formatDate(year, month, day);
+
+    for (const [st, sf] of [
+      ["D", "K"],
+      ["D", "R"],
+      ["N", "K"],
+      ["N", "R"],
+    ] as [ShiftType, ShiftFunction][]) {
+      const cov = getCoverage(working, date);
+      const count =
+        st === "D"
+          ? sf === "K"
+            ? cov.dayK
+            : cov.dayR
+          : sf === "K"
+            ? cov.nightK
+            : cov.nightR;
+      if (count >= 1) continue;
+
+      const best = pickCandidate(team, working, date, st, sf);
+      if (best) {
+        const s: ScheduleDraftEntry = {
+          userId: best.id,
+          date,
+          shiftType: st,
+          shiftFunction: sf,
+        };
+        working.push(s);
+        suggestions.push(s);
+      }
+    }
+  }
+
+  return suggestions;
+}
+
+function pickCandidate(
+  team: TeamMember[],
+  working: ScheduleDraftEntry[],
+  date: string,
+  shiftType: ShiftType,
+  shiftFunction: ShiftFunction
+): TeamMember | null {
+  const eligible = team.filter((member) => {
+    if (member.role === "kierowca" && shiftFunction !== "K") return false;
+    if (member.role === "ratownik" && shiftFunction !== "R") return false;
+    if (working.some((e) => e.userId === member.id && e.date === date))
+      return false;
+    if (wouldCreateRestConflict(working, member.id, date, shiftType))
+      return false;
+    const hours = getMemberHours(working, member.id);
+    if (hours + shiftHours(shiftType) > (member.maxHours ?? 240)) return false;
+    return true;
+  });
+
+  if (eligible.length === 0) return null;
+
+  const scored = eligible.map((member) => {
+    const hours = getMemberHours(working, member.id);
+    const minH = member.minHours ?? 120;
+    const loadRatio = minH > 0 ? hours / minH : 0;
+
+    let fnPenalty = 0;
+    if (member.role === "oba") {
+      const kCount = working.filter(
+        (e) => e.userId === member.id && e.shiftFunction === "K"
+      ).length;
+      const rCount = working.filter(
+        (e) => e.userId === member.id && e.shiftFunction === "R"
+      ).length;
+      fnPenalty = shiftFunction === "K" ? kCount - rCount : rCount - kCount;
+    }
+
+    return { member, loadRatio, fnPenalty };
+  });
+
+  scored.sort((a, b) => {
+    if (a.loadRatio !== b.loadRatio) return a.loadRatio - b.loadRatio;
+    return a.fnPenalty - b.fnPenalty;
+  });
+
+  return scored[0].member;
+}

@@ -14,7 +14,7 @@ export interface ScheduleDraftEntry {
 export interface TeamMember {
   id: number;
   name: string;
-  role: "kierowca" | "ratownik";
+  role: "kierowca" | "ratownik" | "oba";
 }
 
 const HOURS_LIMITS: Record<string, { min: number; max: number }> = {
@@ -104,6 +104,12 @@ export function getRestConflicts(entries: ScheduleDraftEntry[]) {
 
 export function formatDate(year: number, month: number, day: number) {
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+export function getAllowedShiftCodes(role: TeamMember["role"]): readonly ShiftCode[] {
+  if (role === "kierowca") return SHIFT_CODES.filter((c) => c.endsWith("-K"));
+  if (role === "ratownik") return SHIFT_CODES.filter((c) => c.endsWith("-R"));
+  return SHIFT_CODES;
 }
 
 function daysBetween(first: string, second: string) {

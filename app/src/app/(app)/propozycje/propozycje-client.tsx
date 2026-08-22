@@ -9,7 +9,7 @@ import { ChevronLeft, ChevronRight, Loader2, Send, X } from "lucide-react";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const SHIFT_OPTIONS = ["D-K", "D-R", "N-K", "N-R", "DN-K", "DN-R"] as const;
+const ALL_SHIFT_OPTIONS = ["D-K", "D-R", "N-K", "N-R", "DN-K", "DN-R"] as const;
 const SHIFT_COLORS: Record<string, string> = {
   "D-K": "bg-blue-600",
   "D-R": "bg-sky-500",
@@ -53,6 +53,11 @@ export function PropozycjeClient({
   const [submitting, setSubmitting] = useState(false);
   const [pickerDay, setPickerDay] = useState<number | null>(null);
 
+  const shiftOptions = userRole === "kierowca"
+    ? ALL_SHIFT_OPTIONS.filter((o) => o.endsWith("-K"))
+    : userRole === "ratownik"
+    ? ALL_SHIFT_OPTIONS.filter((o) => o.endsWith("-R"))
+    : ALL_SHIFT_OPTIONS;
   const daysInMonth = new Date(year, month, 0).getDate();
   const isFirstAllowedMonth = year === nextMonthDate.getFullYear() && month === nextMonthDate.getMonth() + 1;
   const isLocked = status === "submitted" || status === "approved";
@@ -257,7 +262,7 @@ export function PropozycjeClient({
                 </button>
               </div>
               <div className="grid grid-cols-3 gap-2">
-                {SHIFT_OPTIONS.map((opt) => {
+                {shiftOptions.map((opt) => {
                   const current = selectedDays.find((d) => d.day === pickerDay);
                   const isActive = current?.shift === opt;
                   return (

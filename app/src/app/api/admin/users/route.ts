@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     .values({
       name,
       pin: hashedPin,
-      role: role as "kierowca" | "ratownik",
+      role: role as "kierowca" | "ratownik" | "oba",
       isLeader: false,
     })
     .returning({
@@ -61,11 +61,22 @@ export async function PATCH(request: NextRequest) {
   }
 
   const body = await request.json();
-  const { userId, action, pin, isActive } = body;
+  const { userId, action, pin, role, isActive } = body;
 
-  if (action === "resetPin") {
-    const hashedPin = await hash(pin || "1234", 10);
+  if (action === "setPin") {
+    if (!pin || !/^\d{4,6}$/.test(pin)) {
+      return NextResponse.json({ error: "PIN musi mieć 4-6 cyfr" }, { status: 400 });
+    }
+    const hashedPin = await hash(pin, 10);
     await db.update(users).set({ pin: hashedPin }).where(eq(users.id, userId));
+  } else if (action === "setRole") {
+    if (!["kierowca", "ratownik", "oba"].includes(role)) {
+      return NextResponse.json({ error: "Nieprawidłowa rola" }, { status: 400 });
+    }
+    await db
+      .update(users)
+      .set({ role: role as "kierowca" | "ratownik" | "oba" })
+      .where(eq(users.id, userId));
   } else if (action === "toggleActive") {
     await db
       .update(users)

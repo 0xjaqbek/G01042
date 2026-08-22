@@ -6,7 +6,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -31,6 +30,12 @@ interface User {
   isLeader: boolean;
   isActive: boolean;
 }
+
+const ROLE_LABEL: Record<string, string> = {
+  kierowca: "Kierowca",
+  ratownik: "Ratownik",
+  oba: "K + R",
+};
 
 export function ZespolClient() {
   const [users, setUsers] = useState<User[]>([]);
@@ -69,13 +74,30 @@ export function ZespolClient() {
     setAdding(false);
   }
 
-  async function resetPin(userId: number) {
-    await fetch("/api/admin/users", {
+  async function setPin(userId: number, pin: string) {
+    if (!/^\d{4,6}$/.test(pin)) {
+      alert("PIN musi mieć 4-6 cyfr");
+      return;
+    }
+    const res = await fetch("/api/admin/users", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, action: "resetPin", pin: "1234" }),
+      body: JSON.stringify({ userId, action: "setPin", pin }),
     });
-    alert("PIN zresetowany do 1234");
+    if (res.ok) {
+      alert("PIN ustawiony");
+    }
+  }
+
+  async function changeRole(userId: number, role: string) {
+    const res = await fetch("/api/admin/users", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, action: "setRole", role }),
+    });
+    if (res.ok) {
+      setUsers(users.map((u) => (u.id === userId ? { ...u, role } : u)));
+    }
   }
 
   async function toggleActive(userId: number, isActive: boolean) {
@@ -113,6 +135,7 @@ export function ZespolClient() {
                 <SelectContent>
                   <SelectItem value="kierowca">Kierowca</SelectItem>
                   <SelectItem value="ratownik">Ratownik</SelectItem>
+                  <SelectItem value="oba">Kierowca + Ratownik</SelectItem>
                 </SelectContent>
               </Select>
               <Input
@@ -146,7 +169,7 @@ export function ZespolClient() {
                 className={!user.isActive ? "opacity-50" : ""}
               >
                 <CardContent className="flex items-center justify-between p-3">
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">{user.name}</span>
                       {user.isLeader && (
@@ -154,19 +177,31 @@ export function ZespolClient() {
                       )}
                     </div>
                     <Badge variant="secondary" className="text-xs mt-1">
-                      {user.role === "kierowca" ? "Kierowca" : "Ratownik"}
+                      {ROLE_LABEL[user.role] ?? user.role}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={() => resetPin(user.id)}
-                      title="Reset PIN"
-                    >
-                      <KeyRound className="h-4 w-4" />
-                    </Button>
+                    <Select value={user.role} onValueChange={(v) => v && changeRole(user.id, v)}>
+                      <SelectTrigger className="h-8 w-24 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="kierowca">Kierowca</SelectItem>
+                        <SelectItem value="ratownik">Ratownik</SelectItem>
+                        <SelectItem value="oba">K + R</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Dialog>
+                      <DialogTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" title="Ustaw PIN" />}>
+                        <KeyRound className="h-4 w-4" />
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Ustaw PIN — {user.name}</DialogTitle>
+                        </DialogHeader>
+                        <PinForm userId={user.id} onSave={setPin} />
+                      </DialogContent>
+                    </Dialog>
                     <Switch
                       checked={user.isActive}
                       onCheckedChange={(v) => toggleActive(user.id, v)}
@@ -179,5 +214,27 @@ export function ZespolClient() {
         )}
       </div>
     </>
+  );
+}
+
+function PinForm({ userId, onSave }: { userId: number; onSave: (userId: number, pin: string) => void }) {
+  const [pin, setLocalPin] = useState("");
+  return (
+    <div className="space-y-3">
+      <Input
+        value={pin}
+        onChange={(e) => setLocalPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+        placeholder="Nowy PIN (4-6 cyfr)"
+        maxLength={6}
+        inputMode="numeric"
+      />
+      <Button
+        onClick={() => { onSave(userId, pin); setLocalPin(""); }}
+        disabled={pin.length < 4}
+        className="w-full"
+      >
+        Zapisz PIN
+      </Button>
+    </div>
   );
 }

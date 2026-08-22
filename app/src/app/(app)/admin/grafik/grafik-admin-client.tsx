@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { SHIFT_CODES, formatDate, getCoverage, getCoverageIssueDates, getHoursLimit, getMemberHours, getRestConflicts, splitShiftCode, toShiftCode, type ScheduleDraftEntry, type ShiftCode, type TeamMember } from "@/lib/schedule-rules";
+import { SHIFT_CODES, formatDate, getAllowedShiftCodes, getCoverage, getCoverageIssueDates, getHoursLimit, getMemberHours, getRestConflicts, splitShiftCode, toShiftCode, type ScheduleDraftEntry, type ShiftCode, type TeamMember } from "@/lib/schedule-rules";
 
 const MONTHS = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
 const DAYS = ["Nd", "Pn", "Wt", "Śr", "Cz", "Pt", "Sb"];
@@ -198,7 +198,7 @@ export function GrafikAdminClient() {
                   return <div key={member.id} className="flex min-h-14 items-center gap-3 px-3 py-2">
                     <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{member.name}</p><p className={cn("text-xs text-muted-foreground", changed && "text-amber-500")}>{proposed ? (changed ? `Propozycja: ${proposed}` : "Zgodnie z propozycją") : "Brak zatwierdzonej propozycji"}</p></div>
                     <Select value={code} onValueChange={(value) => setAssignment(member.id, (value ?? "NONE") as ShiftCode | "NONE")}>
-                      <SelectTrigger className="w-24"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="NONE">Wolne</SelectItem>{SHIFT_CODES.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
+                      <SelectTrigger className="w-24"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="NONE">Wolne</SelectItem>{getAllowedShiftCodes(member.role).map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
                     </Select>
                   </div>;
                 })}

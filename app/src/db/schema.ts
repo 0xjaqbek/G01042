@@ -12,7 +12,7 @@ import {
 
 // Enums
 export const announcementPriorityEnum = pgEnum("announcement_priority", ["normal", "urgent"]);
-export const roleEnum = pgEnum("role", ["kierowca", "ratownik"]);
+export const roleEnum = pgEnum("role", ["kierowca", "ratownik", "oba"]);
 export const shiftTypeEnum = pgEnum("shift_type", ["D", "N", "DN"]);
 export const shiftFunctionEnum = pgEnum("shift_function", ["K", "R"]);
 export const proposalStatusEnum = pgEnum("proposal_status", [

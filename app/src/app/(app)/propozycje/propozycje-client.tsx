@@ -9,14 +9,16 @@ import { ChevronLeft, ChevronRight, Loader2, Send, X } from "lucide-react";
 import { AlertTriangle, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const ALL_SHIFT_OPTIONS = ["D-K", "D-R", "N-K", "N-R", "DN-K", "DN-R"] as const;
+const SHIFT_OPTIONS = ["D", "N", "DN"] as const;
+const SHIFT_LABELS: Record<string, string> = {
+  D: "Dzienny (12h)",
+  N: "Nocny (12h)",
+  DN: "Całodobowy (24h)",
+};
 const SHIFT_COLORS: Record<string, string> = {
-  "D-K": "bg-blue-600",
-  "D-R": "bg-sky-500",
-  "N-K": "bg-indigo-700",
-  "N-R": "bg-violet-600",
-  "DN-K": "bg-red-700",
-  "DN-R": "bg-rose-500",
+  D: "bg-blue-600",
+  N: "bg-indigo-700",
+  DN: "bg-red-700",
 };
 
 const DAY_NAMES = ["Nd", "Pn", "Wt", "Śr", "Cz", "Pt", "Sb"];
@@ -33,13 +35,11 @@ interface ProposalDay {
 export function PropozycjeClient({
   userId,
   userName,
-  userRole,
   hoursMin,
   hoursMax,
 }: {
   userId: string;
   userName: string;
-  userRole: string;
   hoursMin: number;
   hoursMax: number;
 }) {
@@ -53,11 +53,6 @@ export function PropozycjeClient({
   const [submitting, setSubmitting] = useState(false);
   const [pickerDay, setPickerDay] = useState<number | null>(null);
 
-  const shiftOptions = userRole === "kierowca"
-    ? ALL_SHIFT_OPTIONS.filter((o) => o.endsWith("-K"))
-    : userRole === "ratownik"
-    ? ALL_SHIFT_OPTIONS.filter((o) => o.endsWith("-R"))
-    : ALL_SHIFT_OPTIONS;
   const daysInMonth = new Date(year, month, 0).getDate();
   const isFirstAllowedMonth = year === nextMonthDate.getFullYear() && month === nextMonthDate.getMonth() + 1;
   const isLocked = status === "submitted" || status === "approved";
@@ -98,8 +93,7 @@ export function PropozycjeClient({
   }
 
   const totalHours = selectedDays.reduce((sum, d) => {
-    if (d.shift.startsWith("DN")) return sum + 24;
-    return sum + 12;
+    return sum + (d.shift === "DN" ? 24 : 12);
   }, 0);
 
   async function saveDraft() {
@@ -247,7 +241,7 @@ export function PropozycjeClient({
             onClick={() => setPickerDay(null)}
           >
             <div
-              className="w-[280px] rounded-2xl border border-border bg-card p-4 shadow-xl"
+              className="w-[240px] rounded-2xl border border-border bg-card p-4 shadow-xl"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-3">
@@ -261,8 +255,8 @@ export function PropozycjeClient({
                   <X className="h-4 w-4" />
                 </button>
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                {shiftOptions.map((opt) => {
+              <div className="flex flex-col gap-2">
+                {SHIFT_OPTIONS.map((opt) => {
                   const current = selectedDays.find((d) => d.day === pickerDay);
                   const isActive = current?.shift === opt;
                   return (
@@ -276,7 +270,7 @@ export function PropozycjeClient({
                           : cn(SHIFT_COLORS[opt], "text-white opacity-60 hover:opacity-90")
                       )}
                     >
-                      {opt}
+                      {SHIFT_LABELS[opt]}
                     </button>
                   );
                 })}

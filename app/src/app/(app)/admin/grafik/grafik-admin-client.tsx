@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { SHIFT_CODES, formatDate, getAllowedShiftCodes, getCoverage, getCoverageIssueDates, getHoursLimit, getMemberHours, getRestConflicts, splitShiftCode, toShiftCode, type ScheduleDraftEntry, type ShiftCode, type TeamMember } from "@/lib/schedule-rules";
+import { SHIFT_CODES, formatDate, getAllowedShiftCodes, getCoverage, getCoverageIssueDates, getHoursLimit, getMemberHours, getRestConflicts, splitShiftCode, toShiftCode, type ScheduleDraftEntry, type ShiftCode, type ShiftFunction, type ShiftType, type TeamMember } from "@/lib/schedule-rules";
 
 const MONTHS = ["Styczeń", "Luty", "Marzec", "Kwiecień", "Maj", "Czerwiec", "Lipiec", "Sierpień", "Wrzesień", "Październik", "Listopad", "Grudzień"];
 const DAYS = ["Nd", "Pn", "Wt", "Śr", "Cz", "Pt", "Sb"];
@@ -36,7 +36,7 @@ interface Proposal {
   userRole: string;
   status: keyof typeof STATUS;
   hours: number;
-  entries: { day: number; shift: ShiftCode }[];
+  entries: { day: number; shift: string }[];
 }
 
 interface ChangelogEntry {
@@ -94,7 +94,7 @@ export function GrafikAdminClient() {
   const coverage = getCoverage(draft, selectedDate);
 
   const approvedByMemberDay = useMemo(() => {
-    const map = new Map<string, ShiftCode>();
+    const map = new Map<string, string>();
     for (const proposal of approvedProposals) {
       for (const entry of proposal.entries) map.set(`${proposal.userId}:${entry.day}`, entry.shift);
     }
@@ -127,7 +127,16 @@ export function GrafikAdminClient() {
   }
 
   function importApproved() {
-    const imported = approvedProposals.flatMap((proposal) => proposal.entries.map((entry) => ({ userId: proposal.userId, date: formatDate(year, month, entry.day), ...splitShiftCode(entry.shift) })));
+    const imported = approvedProposals.flatMap((proposal) => {
+      const member = team.find((m) => m.id === proposal.userId);
+      const fn = member?.role === "ratownik" ? "R" : "K";
+      return proposal.entries.map((entry) => ({
+        userId: proposal.userId,
+        date: formatDate(year, month, entry.day),
+        shiftType: entry.shift as ShiftType,
+        shiftFunction: fn as ShiftFunction,
+      }));
+    });
     setDraft(imported);
     setMessage({ type: "success", text: `Wczytano ${imported.length} dyżurów z zatwierdzonych propozycji.` });
   }
@@ -194,7 +203,7 @@ export function GrafikAdminClient() {
                   const assignment = draft.find((entry) => entry.userId === member.id && entry.date === selectedDate);
                   const code = assignment ? toShiftCode(assignment) : "NONE";
                   const proposed = approvedByMemberDay.get(`${member.id}:${selectedDay}`);
-                  const changed = proposed && code !== "NONE" && proposed !== code;
+                  const changed = proposed && code !== "NONE" && !code.startsWith(proposed);
                   return <div key={member.id} className="flex min-h-14 items-center gap-3 px-3 py-2">
                     <div className="min-w-0 flex-1"><p className="truncate text-sm font-medium">{member.name}</p><p className={cn("text-xs text-muted-foreground", changed && "text-amber-500")}>{proposed ? (changed ? `Propozycja: ${proposed}` : "Zgodnie z propozycją") : "Brak zatwierdzonej propozycji"}</p></div>
                     <Select value={code} onValueChange={(value) => setAssignment(member.id, (value ?? "NONE") as ShiftCode | "NONE")}>

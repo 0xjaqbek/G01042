@@ -13,7 +13,6 @@ export default async function PropozycjePage() {
     <PropozycjeClient
       userId={session.user.id}
       userName={session.user.name}
-      userRole={session.user.role}
       hoursMin={limits.min}
       hoursMax={limits.max}
     />

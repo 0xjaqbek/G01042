@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
 
   const mappedEntries = entries.map((e) => ({
     day: new Date(e.date).getDate(),
-    shift: `${e.shiftType}-${e.shiftFunction}`,
+    shift: e.shiftType,
   }));
 
   return NextResponse.json({ entries: mappedEntries, status: proposal.status });
@@ -100,17 +100,17 @@ export async function POST(request: NextRequest) {
     })
     .returning();
 
-  // Insert entries
+  // Insert entries — users only pick shift type (D/N/DN), function derived from role
+  const defaultFunction = session.user.role === "ratownik" ? "R" : "K";
   if (entries && entries.length > 0) {
     await db.insert(proposalEntries).values(
       entries.map((e: { day: number; shift: string }) => {
-        const [shiftType, shiftFunction] = e.shift.split("-") as [string, string];
         const date = new Date(year, month - 1, e.day);
         return {
           proposalId: proposal.id,
           date: date.toISOString().split("T")[0],
-          shiftType: shiftType as "D" | "N" | "DN",
-          shiftFunction: shiftFunction as "K" | "R",
+          shiftType: e.shift as "D" | "N" | "DN",
+          shiftFunction: defaultFunction as "K" | "R",
         };
       })
     );

@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
         .filter((entry) => entry.proposalId === proposal.id)
         .map((entry) => ({
           day: Number(entry.date.slice(8, 10)),
-          shift: `${entry.shiftType}-${entry.shiftFunction}`,
+          shift: entry.shiftType,
         }));
 
       return {
